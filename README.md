@@ -27,19 +27,15 @@ Localization Council drafts each string with the glossary you provide, checks it
 ## How it works
 
 ```mermaid
-flowchart TD
-    A[Catalog delta] --> B[Translate<br/>glossary, placeholders, ICU]
-    B --> C[Blind back-translate<br/>different vendor, never sees the source]
-    C --> D{Judge<br/>meaning, fluency, glossary}
-    D -->|passes every check| E[accepted.json]
-    D -->|anything doubtful| F[escalate.json + report.md<br/>a person decides]
-    F -. optional .-> G
-    subgraph opt [Optional: shrink the review sheet]
-        direction LR
-        G[Faceoff] --> H[Consensus cull] --> I[Blind audit]
-    end
-    opt -. resolved rows, same checks .-> E
+flowchart LR
+    A[New strings] --> B[Translate] --> C[Blind<br/>back-translate] --> D{Judge}
+    D -->|passes| E[accepted.json]
+    D -->|doubtful| F[escalate.json<br/>+ report.md]
+    F -.->|optional| G[Faceoff, cull,<br/>blind audit]
+    G -.->|resolved| E
 ```
+
+Translate drafts each string with your glossary and checks placeholders and ICU structure. A model from a different vendor back-translates it without seeing the English source. The judge compares that back-translation with the source and scores meaning, fluency, and glossary compliance.
 
 The optional stages run with `--faceoff --consensus-cull --blind-audit`; each winner must pass the same core checks before it reaches `accepted.json`. Not built yet: [domain research](https://github.com/WildConstruct/localization-council/issues/1), a [separate semantic-drift stage](https://github.com/WildConstruct/localization-council/issues/2), and [glossary generation](https://github.com/WildConstruct/localization-council/issues/3).
 
