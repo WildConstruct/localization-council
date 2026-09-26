@@ -27,19 +27,18 @@ Localization Council drafts each string with the glossary you provide, checks it
 ## How it works
 
 ```mermaid
-flowchart LR
-    A[Catalog delta] --> B[Translate]
-    B --> C[Blind back-translate]
-    C --> D[Judge]
+flowchart TD
+    A[Catalog delta] --> B[Translate<br/>glossary, placeholders, ICU]
+    B --> C[Blind back-translate<br/>different vendor, never sees the source]
+    C --> D{Judge<br/>meaning, fluency, glossary}
     D -->|passes every check| E[accepted.json]
     D -->|anything doubtful| F[escalate.json + report.md<br/>a person decides]
-    subgraph Optional resolution
+    F -. optional .-> G
+    subgraph opt [Optional: shrink the review sheet]
+        direction LR
         G[Faceoff] --> H[Consensus cull] --> I[Blind audit]
     end
-    F -. optional .-> G
-    G -->|resolved rows| E
-    H -->|resolved rows| E
-    I -->|resolved rows| E
+    opt -. resolved rows, same checks .-> E
 ```
 
 The optional stages run with `--faceoff --consensus-cull --blind-audit`; each winner must pass the same core checks before it reaches `accepted.json`. Not built yet: [domain research](https://github.com/WildConstruct/localization-council/issues/1), a [separate semantic-drift stage](https://github.com/WildConstruct/localization-council/issues/2), and [glossary generation](https://github.com/WildConstruct/localization-council/issues/3).
