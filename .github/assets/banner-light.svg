@@ -17,17 +17,16 @@
         <circle cx="718" cy="278" r="4" fill="#b98c24"/><text x="718" y="307" text-anchor="end">ACCEPT / ESCALATE</text>
       </g>
     </g>
-    <g transform="translate(790 116)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">
+    <g transform="translate(790 116)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="18">
       <rect width="418" height="218" rx="12" fill="#fafbfc" stroke="#d9dde6"/>
-      <text x="22" y="31" fill="#b98c24" font-weight="700" letter-spacing="1.2">AUDIT TRAIL</text>
-      <line x1="22" y1="45" x2="396" y2="45" stroke="#e1e4eb"/>
+      <text x="22" y="33" fill="#b98c24" font-size="14.5" font-weight="700" letter-spacing="1.5">EXAMPLE: ONE STRING'S RECORD</text>
+      <line x1="22" y1="47" x2="396" y2="47" stroke="#e1e4eb"/>
       <g fill="#5f687b">
-        <text x="22" y="72">key</text><text x="190" y="72" fill="#203051">ui.viewport.onion</text>
-        <text x="22" y="98">source</text><text x="190" y="98" fill="#203051">Onion skin</text>
-        <text x="22" y="124">candidate</text><text x="190" y="124" fill="#203051">Zwiebelschale</text>
-        <text x="22" y="150">back-translation</text><text x="190" y="150" fill="#203051">Onion skin</text>
-        <text x="22" y="176">meaning</text><text x="190" y="176" fill="#203051">0.96</text>
-        <text x="22" y="202" fill="#b98c24" font-weight="700">ESCALATED: glossary violation</text>
+        <text x="22" y="78">English</text><text x="190" y="78" fill="#203051">Onion skin</text>
+        <text x="22" y="106">German draft</text><text x="190" y="106" fill="#203051">Zwiebelschale</text>
+        <text x="22" y="134">Translated back</text><text x="190" y="134" fill="#203051">Onion skin</text>
+        <text x="22" y="162">Meaning match</text><text x="190" y="162" fill="#203051">96%</text>
+        <text x="22" y="198" fill="#b98c24" font-size="17" font-weight="700">Sent to a human: breaks the glossary</text>
       </g>
     </g>
   </g>
