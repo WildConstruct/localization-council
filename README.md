@@ -91,11 +91,12 @@ council run --profile=fleet --catalog locales/en.json --locale de --target local
 
 Pick one with `--preset`. The `openrouter` profile uses `balanced` by default.
 
-| Preset | Translate | Back-translate | Judge | Cost |
-|---|---|---|---|---|
-| `balanced` | `anthropic/claude-opus-5.5` | `x-ai/grok-4.7` | `openai/gpt-5.6-sol` | 1x |
-| `budget` | `deepseek/deepseek-v4.1-flash` | `google/gemini-3.5-flash-lite` | `openai/gpt-5.6-sol` | about 1/2 |
-| `cheapest` | `deepseek/deepseek-v4.1-flash` | `google/gemini-3.5-flash-lite` | `openai/gpt-6-luna` | about 1/13 |
+| Stage | `balanced` | `budget` | `cheapest` |
+|---|---|---|---|
+| Translate | `anthropic/claude-opus-5.5` | `deepseek/deepseek-v4.1-flash` | `deepseek/deepseek-v4.1-flash` |
+| Back-translate | `x-ai/grok-4.7` | `google/gemini-3.5-flash-lite` | `google/gemini-3.5-flash-lite` |
+| Judge | `openai/gpt-5.6-sol` | `openai/gpt-5.6-sol` | `openai/gpt-6-luna` |
+| Relative cost | 1x | about 1/2 | about 1/13 |
 
 - **balanced:** strongest translator, cross-vendor blind back-translation, strong judge.
 - **budget:** cheap translate and back-translate, same strong judge. The judge is where cheaper models lost the most.
