@@ -1,62 +1,57 @@
-# Localization Council
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset=".github/assets/banner-light.svg">
+    <img alt="Localization Council by Wild Construct" src=".github/assets/banner-light.svg" width="100%">
+  </picture>
 
-Machine translation of product UI is usually fluent. Mostly the mistakes are fluent too: a
-literal calque that confuses professional users, or a "Rendering…" that quietly becomes "Processing…".
-Localization Council flags those before they ship. It drafts each string with the glossary you
-provide, has a different model back-translate it blind, scores meaning and glossary compliance, and
-sends anything doubtful to a person. The person doesn't need to speak the target language, because every
-flag comes with the source, the candidate, a blind back-translation, and a reason.
+  <p>For people shipping software to real users in other languages who want translations that read like a native professional wrote them, with a paper trail a person can review.</p>
 
-It was built to localize a real product's UI catalog and is released under MIT so small teams
-can use it and help improve it.
+  <p>
+    <a href="https://github.com/WildConstruct/localization-council/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/WildConstruct/localization-council/actions/workflows/ci.yml/badge.svg"></a>
+    <a href="https://github.com/WildConstruct/localization-council/security/code-scanning"><img alt="CodeQL status" src="https://github.com/WildConstruct/localization-council/actions/workflows/github-code-scanning/codeql/badge.svg"></a>
+    <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-e6a23c"></a>
+    <a href="package.json"><img alt="Node.js 20 or newer" src="https://img.shields.io/badge/node-%3E%3D20-203051"></a>
+    <a href="package.json"><img alt="Zero runtime dependencies" src="https://img.shields.io/badge/dependencies-0-e6a23c"></a>
+  </p>
 
-**What runs today:** translate (glossary-aware, with placeholder and ICU checks) → blind
-back-translate (a different vendor) → judge (meaning of the back-translation against the source,
-fluency, glossary compliance) → accept into output or escalate to a person. Optional faceoff,
-consensus cull, and blind audit then work through the escalated rows. **What it doesn't do (yet):**
-research the product's domain, run a separate semantic-drift stage (drift is caught by the judge's
-meaning score against the blind back-translation), or generate glossaries (you write them). Those
-are on the [roadmap](docs/backlog.md#roadmap).
+  <p><a href="#quick-start">Quick start</a> · <a href="#how-it-works">How it works</a> · <a href="#for-agents-and-mcp">MCP</a> · <a href="#docs">Docs</a></p>
+</div>
 
-It runs three ways with the same commands and the same artifacts:
+## Why it exists
 
-- **mock**: offline and deterministic, with no keys. Use it to try the tool and in CI.
-- **openrouter**: one `OPENROUTER_API_KEY`, with a model per stage.
-- **fleet**: the `claude`, `grok`, and `codex` terminal CLIs you already have logged in.
+Machine translation of product UI is usually fluent. Most mistakes are fluent too: a literal calque that confuses professional users, or a "Rendering…" that quietly becomes "Processing…".
 
-## Pipeline
+Localization Council drafts each string with the glossary you provide, checks it through independent stages, and sends doubtful rows to a person. The reviewer need not speak the target language. Every flag carries the source, candidate, blind back-translation, and reason.
 
-```
-            ┌──────────────┐   ┌──────────────────────┐   ┌──────────────┐
- en.json ──►│  translate   │──►│ blind back-translate │──►│    judge     │──┬──► accepted.json
- (delta)    │  glossary +  │   │  never sees the      │   │  meaning,    │  │    (accepted into output)
-            │  ICU/token   │   │  English source;     │   │  fluency,    │  │
-            │  checks      │   │  different vendor    │   │  glossary    │  └──► escalate.json + report.md
-            └──────────────┘   └──────────────────────┘   └──────────────┘         (a person decides)
-                                                                                    │
-                                     optional: faceoff → consensus cull → blind audit
-```
+## How it works
 
-Every stage caches its results. A rerun skips work that already finished, and every run writes a
-`manifest.json` that records the profile, the models that answered, the thresholds, the seed, tool
-versions, and cost.
-
-### Two terms used everywhere
-
-- **Accept into output**: the council writes a candidate to `accepted.json` under `--out`. That is
-  the only thing the council ever does with a translation.
-- **Merge**: a person moves accepted strings into the product catalog, usually through a normal
-  pull request. The council, and any agent that drives it, never merges.
-
-## Quickstart
-
-Install from git. The package has zero dependencies (Node ≥ 20 standard library only) and adds a `council` command:
-
-```bash
-npm install -g github:WildConstruct/localization-council   # or: git clone … && node src/cli.mjs
+```mermaid
+flowchart LR
+    A[Catalog delta] --> B[Translate]
+    B --> C[Blind back-translate]
+    C --> D[Judge]
+    D -->|passes every check| E[accepted.json]
+    D -->|anything doubtful| F[escalate.json + report.md<br/>a person decides]
+    subgraph Optional resolution
+        G[Faceoff] --> H[Consensus cull] --> I[Blind audit]
+    end
+    F -. optional .-> G
+    G -->|resolved rows| E
+    H -->|resolved rows| E
+    I -->|resolved rows| E
 ```
 
-**Mock** (offline, no keys):
+The optional stages run with `--faceoff --consensus-cull --blind-audit`; each winner must pass the same core checks before it reaches `accepted.json`. Not built yet: [domain research](https://github.com/WildConstruct/localization-council/issues/1), a [separate semantic-drift stage](https://github.com/WildConstruct/localization-council/issues/2), and [glossary generation](https://github.com/WildConstruct/localization-council/issues/3).
+
+- **Accept into output:** write a candidate to `accepted.json` under `--out`.
+- **Merge:** a person moves selected strings into the product catalog. The council never merges.
+
+Runs use one of three profiles: offline deterministic `mock`, OpenRouter with one API key, or the `claude`, `grok`, and `codex` terminal CLIs with `fleet`. Results are cached, and `manifest.json` records the run configuration, tool versions, and available cost data.
+
+## Quick start
+
+From a fresh clone:
 
 ```bash
 git clone https://github.com/WildConstruct/localization-council && cd localization-council
@@ -64,7 +59,13 @@ node src/cli.mjs doctor
 node src/cli.mjs run --profile=mock --catalog fixtures/toy/en.json --locale de --glossary fixtures/toy/glossary.de.json
 ```
 
-**OpenRouter** (one key):
+The mock run exits `10` with 17 accepted strings and 3 escalations. Its artifacts are in `scores/de/`. To install the `council` command:
+
+```bash
+npm install -g github:WildConstruct/localization-council
+```
+
+OpenRouter uses one key:
 
 ```bash
 export OPENROUTER_API_KEY=…
@@ -73,96 +74,80 @@ council run --profile=openrouter --catalog locales/en.json --locale de --target 
 council run --preset budget --catalog locales/en.json --locale de --target locales/de.json
 ```
 
-**Fleet** (local CLIs):
+Fleet uses the terminal CLIs already logged in:
 
 ```bash
-council doctor            # shows whether claude, grok and codex are installed, recent enough, and logged in
+council doctor
 council run --profile=fleet --catalog locales/en.json --locale de --target locales/de.json
 ```
 
-`--target` limits a run to keys that are missing or untranslated in the locale file. Artifacts go to
-`--out`, which defaults to `./scores/<locale>/`:
+`--target` limits work to missing or untranslated keys. `--out` defaults to `scores/<locale>/`.
 
-| File | What it is |
-|------|------------|
-| `candidates.json` | Draft translations with token and ICU check results |
+| Artifact | Contents |
+|---|---|
+| `candidates.json` | Drafts plus placeholder and ICU checks |
 | `backtranslations.json` | Blind back-translations |
 | `scores.json` | Judge verdicts |
-| `accepted.json` | Strings the council accepted into output (`{ strings: { key: text } }`) |
-| `escalate.json` | Rows a person needs to look at, with reasons |
-| `report.md` | The same information as a readable report |
-| `manifest.json` | Profile, models, thresholds, seed, tool versions, cost, cache hits |
+| `accepted.json` | Strings accepted into output |
+| `escalate.json`, `report.md` | Review rows in structured and readable forms |
+| `manifest.json` | Profile, models, thresholds, seed, tools, cost, and cache hits |
 
-Default stage models for each profile live in [`config/models.json`](config/models.json). Each
-profile uses a different vendor for translation, back-translation, and judging. The council warns
-if you pick models from the same family for two of those stages (see
-[docs/openrouter.md](docs/openrouter.md#vendor-diversity)).
+## OpenRouter presets
+
+| Preset | Translate | Back-translate | Judge | Use |
+|---|---|---|---|---|
+| `balanced` | `anthropic/claude-opus-5.5` | `x-ai/grok-4.7` | `openai/gpt-5.6-sol` | Strongest translator, cross-vendor blind check, strong judge. |
+| `budget` | `deepseek/deepseek-v4.1-flash` | `google/gemini-3.5-flash-lite` | `openai/gpt-5.6-sol` | Cheap first stages with the strong judge, about half the cost of balanced. |
+| `cheapest` | `deepseek/deepseek-v4.1-flash` | `google/gemini-3.5-flash-lite` | `openai/gpt-6-luna` | About 1/13 the cost of balanced. For drafts and smoke runs, not sign-off. |
+
+See the [model bakeoff](docs/model-bakeoff.md) for the evidence, the [model-selection skill](skills/model-selection/SKILL.md) for choosing presets and stage overrides, and [`config/models.json`](config/models.json) for the source of truth.
 
 ## A glossary entry
 
-Glossaries record what the product means by a term, the word practitioners actually use, and the
-wrong words, each with the reason it's wrong
-([schema](schemas/glossary.v0.json)). From [`fixtures/toy/glossary.de.json`](fixtures/toy/glossary.de.json):
+Glossaries record product meaning, practitioner terminology, and rejected terms with reasons. See the [glossary schema](schemas/glossary.v0.json). From the [toy German glossary](fixtures/toy/glossary.de.json):
 
 ```json
 {
   "source": "onion skin",
   "locale": "de",
   "productMeaning": "Semi-transparent overlay of adjacent frames for frame-by-frame animation.",
-  "relatedTerms": ["Onion skinning", "ghost frames"],
   "practitionerTerm": "Onion Skin",
   "approved": true,
   "rejected": [
-    { "term": "Zwiebelschale", "why": "Calque that confuses artists; keep English loan in UI." },
-    { "term": "Geisterbilder", "why": "Implies haunt/ghost UI, not standard animation jargon." }
+    { "term": "Zwiebelschale", "why": "Calque that confuses artists; keep English loan in UI." }
   ]
 }
 ```
 
 ## An escalated row
 
-From `report.md` after the mock quickstart above:
+| Key | Source | Candidate | Back-translation | Meaning | Reason |
+|---|---|---|---|---:|---|
+| `ui.viewport.onion` | Onion skin | Zwiebelschale | Onion skin | 0.96 | Glossary violation: rejected calque |
 
-| Key | Source | Candidate | Back-translation | Meaning | Reasons |
-|-----|--------|-----------|------------------|---------|---------|
-| `ui.viewport.onion` | Onion skin | Zwiebelschale | Onion skin | 0.96 | glossary_violation; rejected term "Zwiebelschale": Calque that confuses artists; keep English loan in UI. |
+Meaning alone would pass this row. The glossary catches the terminology problem and leaves the evidence for review.
 
-The back-translation looks perfect, so meaning alone would have accepted it. The glossary catches
-it. Add `--faceoff --consensus-cull --blind-audit` and the council tries other providers for the
-escalated rows, then accepts "Onion Skin" into output once two independent candidates agree and
-pass every check.
+Adding `--faceoff --consensus-cull --blind-audit` makes the council try other providers for escalated rows, and in the mock demo it accepts "Onion Skin" once two independent candidates agree and pass every check.
 
-## For agents
+## For agents and MCP
 
-Agents can also use the stdio MCP server; see [docs/mcp.md](docs/mcp.md).
+The stdio MCP server exposes the same workflow. See [MCP setup](docs/mcp.md) and the operating contract in [AGENTS.md](AGENTS.md).
 
-Every subcommand takes `--json` and prints one summary object
-([schemas/summary.v1.json](schemas/summary.v1.json)). Exit codes are `0` clean, `10` escalations
-(or reopen rows for `tidy`), `1` error, `2` usage, and `3` for a doctor preflight that failed. Without
-`--json`, the council prints nothing when there is nothing to do. [AGENTS.md](AGENTS.md) is the
-full contract: how to run a delta, how to read `escalate.json`, and what to hand a person.
+Every subcommand accepts `--json` and prints one object matching the [summary schema](schemas/summary.v1.json). Exit codes are `0` clean, `10` escalations or tidy reopen rows, `1` error, `2` usage, and `3` doctor preflight failed.
 
-```js
-import { runCouncil } from "localization-council";
-const summary = await runCouncil({ catalog: "en.json", locale: "de", profile: "mock", out: "scores/de" });
-```
+## Docs
 
-## Advanced
+- [Pipeline internals](docs/pipeline.md) and [design notes](docs/design-notes.md)
+- [Post-escalate resolution](docs/escalate-resolution.md) and [retrospective tidy](docs/retrospective-tidy.md)
+- [Fleet CLIs](docs/fleet-cli.md), [OpenRouter](docs/openrouter.md), and [Jev decision gates](docs/jev-gates.md)
+- [Multi-repo gardens](docs/garden.md), [scheduled routines](docs/routines/scheduled-agent.md), and [CI delta checks](docs/ci-delta.md)
+- [Model bakeoff](docs/model-bakeoff.md), [results](docs/results.md), and [roadmap](docs/backlog.md)
 
-- [Post-escalate stages](docs/escalate-resolution.md): faceoff, consensus cull, and blind audit (`--faceoff`, `--consensus-cull`, `--blind-audit`).
-- [Retrospective tidy](docs/retrospective-tidy.md): `council tidy` re-audits strings that already shipped when a better judge or glossary arrives.
-- [Multi-repo garden](docs/garden.md): walk many catalogs, with locale tiers.
-- [Jev decision gates](docs/jev-gates.md): an optional typed judge (`judge=api:jev`) for accept/escalate and blind-audit votes.
-- [Agent routines](docs/routines/scheduled-agent.md): a scheduled agent runs deltas, stays quiet when clean, and pings a person when needed.
-- [Fleet CLIs](docs/fleet-cli.md) and [OpenRouter](docs/openrouter.md): provider details, environment variables, and timeouts.
-- [Model presets](docs/openrouter.md#presets-and-per-stage-overrides) (`--preset balanced|budget|cheapest`, `--judge-model` …) and the [cheap-model bakeoff](docs/model-bakeoff.md) behind them; agents follow [skills/model-selection/SKILL.md](skills/model-selection/SKILL.md).
-- [Pipeline internals](docs/pipeline.md), [CI as a PR gate](docs/ci-delta.md), [design notes](docs/design-notes.md), and [results](docs/results.md).
+## Contributing and security
 
-## Contributing
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. [Good first issues](docs/good-first-issues.md) and the [issue templates](.github/ISSUE_TEMPLATE/) are useful starting points. `npm test` runs the offline suite.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). `npm test` runs everything offline. CI never calls a live
-provider, and `npm run smoke:openrouter` / `npm run smoke:fleet` run the live checks when you
-have the keys or CLIs.
+Report vulnerabilities privately through [GitHub private vulnerability reporting](https://github.com/WildConstruct/localization-council/security/advisories/new), as described in [SECURITY.md](SECURITY.md). If that is unavailable, email [support@wildconstruct.com](mailto:support@wildconstruct.com).
 
 ## About Wild Construct
 
