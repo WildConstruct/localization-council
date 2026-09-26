@@ -89,11 +89,17 @@ council run --profile=fleet --catalog locales/en.json --locale de --target local
 
 ## OpenRouter presets
 
-| Preset | Translate | Back-translate | Judge | Use |
+Pick one with `--preset`. The `openrouter` profile uses `balanced` by default.
+
+| Preset | Translate | Back-translate | Judge | Cost |
 |---|---|---|---|---|
-| `balanced` | `anthropic/claude-opus-5.5` | `x-ai/grok-4.7` | `openai/gpt-5.6-sol` | Strongest translator, cross-vendor blind check, strong judge. |
-| `budget` | `deepseek/deepseek-v4.1-flash` | `google/gemini-3.5-flash-lite` | `openai/gpt-5.6-sol` | Cheap first stages with the strong judge, about half the cost of balanced. |
-| `cheapest` | `deepseek/deepseek-v4.1-flash` | `google/gemini-3.5-flash-lite` | `openai/gpt-6-luna` | About 1/13 the cost of balanced. For drafts and smoke runs, not sign-off. |
+| `balanced` | `anthropic/claude-opus-5.5` | `x-ai/grok-4.7` | `openai/gpt-5.6-sol` | 1x |
+| `budget` | `deepseek/deepseek-v4.1-flash` | `google/gemini-3.5-flash-lite` | `openai/gpt-5.6-sol` | about 1/2 |
+| `cheapest` | `deepseek/deepseek-v4.1-flash` | `google/gemini-3.5-flash-lite` | `openai/gpt-6-luna` | about 1/13 |
+
+- **balanced:** strongest translator, cross-vendor blind back-translation, strong judge.
+- **budget:** cheap translate and back-translate, same strong judge. The judge is where cheaper models lost the most.
+- **cheapest:** every stage on a low-cost model. It catches blatant meaning drift but misses most subtle terminology problems. Use it for drafts and smoke runs, not sign-off.
 
 See the [model bakeoff](docs/model-bakeoff.md) for the evidence, the [model-selection skill](skills/model-selection/SKILL.md) for choosing presets and stage overrides, and [`config/models.json`](config/models.json) for the source of truth.
 
