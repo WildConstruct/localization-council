@@ -1,0 +1,493 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/summary.v1.json",
+  "title": "council --json summary",
+  "description": "Every subcommand prints exactly one of these with --json. The envelope is shared; $defs.<command> adds the command's fields, and error summaries keep those fields (null or empty). The run summary has the same shape for every profile (mock, openrouter, fleet).",
+  "type": "object",
+  "required": [
+    "schema",
+    "command",
+    "councilVersion",
+    "status",
+    "exitCode",
+    "warnings",
+    "errors"
+  ],
+  "properties": {
+    "schema": {
+      "const": "council.summary.v1"
+    },
+    "command": {
+      "enum": [
+        "run",
+        "diff",
+        "tidy",
+        "garden",
+        "doctor",
+        "presets",
+        "version",
+        "help"
+      ]
+    },
+    "councilVersion": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "exitCode": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/message"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/message"
+      }
+    }
+  },
+  "anyOf": [
+    { "$ref": "#/$defs/run" },
+    { "$ref": "#/$defs/diff" },
+    { "$ref": "#/$defs/tidy" },
+    { "$ref": "#/$defs/garden" },
+    { "$ref": "#/$defs/doctor" },
+    { "$ref": "#/$defs/presets" },
+    { "$ref": "#/$defs/version" },
+    { "$ref": "#/$defs/help" }
+  ],
+  "$defs": {
+    "message": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "presets": {
+      "type": "object",
+      "required": ["status", "defaultStages", "presets", "profiles", "precedence"],
+      "properties": {
+        "command": { "const": "presets" },
+        "status": { "enum": ["ok", "error"] },
+        "defaultStages": { "$ref": "#/$defs/stageMap" },
+        "presets": { "type": "array" },
+        "profiles": { "type": "array" },
+        "precedence": { "const": "config/models.json < modelsFile < preset < per-stage model" }
+      }
+    },
+    "stageMap": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "translate",
+        "backtranslate",
+        "judge"
+      ],
+      "properties": {
+        "translate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "backtranslate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "judge": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": [
+        "status",
+        "locale",
+        "profile",
+        "providers",
+        "models",
+        "outDir",
+        "artifacts",
+        "counts",
+        "escalations",
+        "costUsd",
+        "skipped"
+      ],
+      "properties": {
+        "command": { "const": "run" },
+        "status": {
+          "enum": [
+            "clean",
+            "escalations",
+            "error"
+          ]
+        },
+        "exitCode": {
+          "enum": [
+            0,
+            1,
+            2,
+            10
+          ]
+        },
+        "locale": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "profile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "preset": {
+          "type": ["string", "null"]
+        },
+        "providers": {
+          "$ref": "#/$defs/stageMap"
+        },
+        "models": {
+          "$ref": "#/$defs/stageMap"
+        },
+        "outDir": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "artifacts": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "candidates",
+            "backtranslations",
+            "scores",
+            "escalate",
+            "accepted",
+            "report",
+            "manifest",
+            "log"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "counts": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "keys",
+            "accepted",
+            "escalated",
+            "initialEscalations",
+            "resolvedByFaceoff",
+            "resolvedByConsensusCull",
+            "resolvedByBlindAudit",
+            "cacheHits"
+          ],
+          "properties": {
+            "keys": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "accepted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "escalated": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "initialEscalations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "resolvedByFaceoff": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "resolvedByConsensusCull": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "resolvedByBlindAudit": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cacheHits": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "escalations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "key",
+              "reasons"
+            ],
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "costUsd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "skipped": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "required": [
+        "status",
+        "delta",
+        "missing",
+        "untranslated",
+        "sourceCount",
+        "targetCount"
+      ],
+      "properties": {
+        "command": { "const": "diff" },
+        "status": {
+          "enum": [
+            "clean",
+            "delta",
+            "error"
+          ]
+        },
+        "delta": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "missing": {
+          "type": "array"
+        },
+        "untranslated": {
+          "type": "array"
+        }
+      }
+    },
+    "tidy": {
+      "type": "object",
+      "required": [
+        "status",
+        "locale",
+        "judge",
+        "outDir",
+        "artifacts",
+        "counts",
+        "reopen",
+        "costUsd"
+      ],
+      "properties": {
+        "command": { "const": "tidy" },
+        "status": {
+          "enum": [
+            "clean",
+            "reopen",
+            "error"
+          ]
+        },
+        "counts": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "rows",
+            "reopen",
+            "btMissing",
+            "btGenerated"
+          ]
+        },
+        "reopen": {
+          "type": "array"
+        }
+      }
+    },
+    "garden": {
+      "type": "object",
+      "required": [
+        "status",
+        "catalogs",
+        "walked",
+        "withDelta",
+        "results"
+      ],
+      "properties": {
+        "command": { "const": "garden" },
+        "status": {
+          "enum": [
+            "clean",
+            "delta",
+            "errors",
+            "error"
+          ]
+        }
+      }
+    },
+    "doctor": {
+      "type": "object",
+      "required": [
+        "status",
+        "node",
+        "clis",
+        "keys",
+        "profiles",
+        "recommendedProfile"
+      ],
+      "properties": {
+        "command": { "const": "doctor" },
+        "status": {
+          "enum": [
+            "ok",
+            "not_runnable",
+            "error"
+          ]
+        },
+        "clis": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "name",
+              "installed",
+              "path",
+              "version",
+              "minVersion",
+              "versionOk",
+              "auth"
+            ]
+          }
+        },
+        "keys": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "profiles": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "runnable",
+              "missing",
+              "stages"
+            ],
+            "properties": {
+              "runnable": {
+                "type": "boolean"
+              },
+              "missing": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "recommendedProfile": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "version": {
+      "type": "object",
+      "required": ["status", "version"],
+      "properties": {
+        "command": { "const": "version" },
+        "status": { "enum": ["ok", "error"] },
+        "version": { "type": ["string", "null"] }
+      }
+    },
+    "help": {
+      "type": "object",
+      "required": [
+        "status",
+        "usage"
+      ],
+      "properties": {
+        "command": { "const": "help" },
+        "status": {
+          "enum": [
+            "ok",
+            "error"
+          ]
+        },
+        "usage": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

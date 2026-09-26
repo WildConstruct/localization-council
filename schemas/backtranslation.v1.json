@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/backtranslation.v1.json",
+  "title": "Model output: one blind back-translation",
+  "description": "What a back-translate call must return per item. The model never sees the English source.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["backtranslation"],
+  "properties": {
+    "backtranslation": { "type": "string", "minLength": 1 }
+  }
+}

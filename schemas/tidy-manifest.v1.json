@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/tidy-manifest.v1.json",
+  "title": "Tidy manifest (manifest.json under a council tidy --out)",
+  "description": "What a retrospective tidy ran with: profile, judge, back-translate provider (when --generate-bt), glossary version, threshold, cost, and cache use.",
+  "type": "object",
+  "required": [
+    "schema",
+    "command",
+    "councilVersion",
+    "startedAt",
+    "finishedAt",
+    "locale",
+    "profile",
+    "judge",
+    "backtranslate",
+    "glossary",
+    "thresholds",
+    "cost",
+    "cache"
+  ],
+  "properties": {
+    "schema": {
+      "const": "council.tidy-manifest.v1"
+    },
+    "command": {
+      "const": "tidy"
+    },
+    "preset": { "type": ["string", "null"] },
+    "stageModels": {
+      "type": "object",
+      "properties": {
+        "translate": { "type": "string" },
+        "backtranslate": { "type": "string" },
+        "judge": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "judge": {
+      "type": "string"
+    },
+    "backtranslate": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "meaning"
+      ]
+    },
+    "cost": {
+      "type": "object",
+      "required": [
+        "usd",
+        "complete"
+      ]
+    },
+    "cache": {
+      "type": "object",
+      "required": [
+        "dir",
+        "enabled",
+        "hits",
+        "misses"
+      ]
+    }
+  }
+}

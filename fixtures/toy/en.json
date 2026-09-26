@@ -1,0 +1,22 @@
+{
+  "ui.timeline.play": "Play",
+  "ui.timeline.pause": "Pause",
+  "ui.timeline.scrub": "Scrub playhead",
+  "ui.comp.new": "New composition",
+  "ui.comp.duration": "Duration",
+  "ui.layer.add": "Add layer",
+  "ui.layer.precomp": "Pre-compose",
+  "ui.effect.apply": "Apply effect",
+  "ui.effect.mask": "Mask path",
+  "ui.render.queue": "Add to render queue",
+  "ui.render.export": "Export sequence",
+  "ui.viewport.fit": "Fit to viewport",
+  "ui.viewport.onion": "Onion skin",
+  "ui.keyframe.ease": "Ease in / out",
+  "ui.space.transform": "Transform",
+  "ui.space.anchor": "Anchor point",
+  "ui.help.shortcut": "Keyboard shortcuts",
+  "ui.status.ready": "Ready",
+  "ui.status.rendering": "Rendering…",
+  "ui.error.gpu": "GPU unavailable — falling back to CPU"
+}

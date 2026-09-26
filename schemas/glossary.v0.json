@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/glossary.v0.json",
+  "title": "Localization Council Glossary Schema v0",
+  "type": "object",
+  "required": ["schemaVersion", "locale", "entries"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "0"
+    },
+    "locale": {
+      "type": "string",
+      "description": "BCP 47 language tag for this glossary slice"
+    },
+    "version": {
+      "type": "string",
+      "description": "Optional glossary version. Part of the result-cache key; when omitted a content hash is used."
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "locale",
+          "productMeaning",
+          "relatedTerms",
+          "practitionerTerm",
+          "approved",
+          "rejected"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "English source term or phrase"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "productMeaning": {
+            "type": "string",
+            "description": "What the product means by this term"
+          },
+          "relatedTerms": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Related industry terms (e.g. the names other tools use)"
+          },
+          "practitionerTerm": {
+            "type": "string",
+            "description": "Preferred practitioner-facing term in the locale"
+          },
+          "approved": {
+            "type": "boolean",
+            "description": "Whether the practitionerTerm is approved for use"
+          },
+          "rejected": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["term", "why"],
+              "additionalProperties": false,
+              "properties": {
+                "term": { "type": "string" },
+                "why": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

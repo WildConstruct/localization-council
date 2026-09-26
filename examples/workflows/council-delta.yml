@@ -1,0 +1,60 @@
+# Toy delta demo for this repo (mirrored at examples/workflows/council-delta.yml).
+# Uses the offline mock profile only. Consumer repos should start from
+# examples/consumer-ci.yml instead.
+name: council-delta
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  toy-delta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Diff toy catalogs
+        id: diff
+        run: |
+          node src/cli.mjs diff \
+            --source fixtures/toy/en.json \
+            --target fixtures/toy/de.json \
+            --json > /tmp/delta.json
+          echo "delta=$(node -p "require('/tmp/delta.json').delta")" >> "$GITHUB_OUTPUT"
+
+      - name: Run council on the delta (mock)
+        if: steps.diff.outputs.delta != '0'
+        # Exit 10 means "escalations for a human", which is the expected
+        # outcome of the toy demo. Any other non-zero exit is a real failure.
+        run: |
+          set +e
+          node src/cli.mjs run \
+            --catalog fixtures/toy/en.json \
+            --locale de \
+            --glossary fixtures/toy/glossary.de.json \
+            --target fixtures/toy/de.json \
+            --profile=mock \
+            --faceoff --consensus-cull --blind-audit \
+            --out scores/de \
+            --json > /tmp/summary.json
+          code=$?
+          cat /tmp/summary.json
+          if [ "$code" -ne 0 ] && [ "$code" -ne 10 ]; then exit "$code"; fi
+
+      - name: Upload scores
+        if: steps.diff.outputs.delta != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: council-scores-de
+          path: |
+            scores/
+            !scores/**/.cache/

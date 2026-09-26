@@ -1,0 +1,8 @@
+{
+  "ui.timeline.play": "Play",
+  "ui.timeline.pause": "Pause",
+  "ui.comp.new": "New composition",
+  "ui.layer.precomp": "Pre-compose",
+  "ui.viewport.onion": "Onion skin",
+  "ui.status.rendering": "Rendering…"
+}

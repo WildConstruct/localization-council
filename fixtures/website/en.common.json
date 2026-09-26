@@ -1,0 +1,10 @@
+{
+  "page": "common",
+  "locale": "en",
+  "_comment": ["Fixture: exact-substring EN catalog wrapper"],
+  "strings": [
+    "Skip to content",
+    "Products",
+    "Pricing"
+  ]
+}

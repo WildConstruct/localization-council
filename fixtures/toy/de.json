@@ -1,0 +1,13 @@
+{
+  "ui.timeline.play": "Abspielen",
+  "ui.timeline.pause": "Pause",
+  "ui.comp.new": "Neue Komposition",
+  "ui.comp.duration": "Dauer",
+  "ui.layer.add": "Ebene hinzufügen",
+  "ui.effect.apply": "Effekt anwenden",
+  "ui.render.queue": "Zur Renderwarteschlange hinzufügen",
+  "ui.viewport.fit": "An Viewport anpassen",
+  "ui.space.transform": "Transformation",
+  "ui.status.ready": "Bereit",
+  "ui.status.rendering": "Wird gerendert…"
+}

@@ -1,0 +1,34 @@
+{
+  "id": "gen-1758790000-7kQ2mZpL0cXw",
+  "provider": "xAI",
+  "model": "x-ai/grok-4.7",
+  "object": "chat.completion",
+  "created": 1758790000,
+  "choices": [
+    {
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"items\":[{\"key\":\"c0\",\"backtranslation\":\"Play\"},{\"key\":\"c1\",\"backtranslation\":\"Onion skin\"}]}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 236,
+    "completion_tokens": 14,
+    "total_tokens": 250,
+    "cost": 0.00041,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "$comment": "Named execution profiles. Each stage value is a provider spec: mock, cli:<name>, openrouter (use the stage default from config/models.json), openrouter:<slug>, or api:jev (judge/compare only). faceoff and auditJudges feed the optional post-escalate stages.",
+  "schemaVersion": 1,
+  "default": "mock",
+  "profiles": {
+    "mock": {
+      "description": "Deterministic offline providers. No network, no CLIs, no keys.",
+      "translate": "mock",
+      "backtranslate": "mock",
+      "judge": "mock",
+      "faceoff": ["mock:alt", "mock:third"],
+      "auditJudges": ["mock", "mock:alt", "mock:third"],
+      "requires": []
+    },
+    "openrouter": {
+      "description": "One OPENROUTER_API_KEY over HTTP. Stage models come from config/models.json (openrouter.stages).",
+      "translate": "openrouter",
+      "backtranslate": "openrouter",
+      "judge": "openrouter",
+      "faceoff": "openrouter.faceoff",
+      "auditJudges": "openrouter.auditJudges",
+      "requires": ["env:OPENROUTER_API_KEY"]
+    },
+    "fleet": {
+      "description": "Local terminal CLIs: Claude Code translates, Grok back-translates blind, Codex judges.",
+      "translate": "cli:claude",
+      "backtranslate": "cli:grok",
+      "judge": "cli:codex",
+      "faceoff": ["cli:claude", "cli:grok", "cli:codex"],
+      "auditJudges": ["cli:claude", "cli:grok", "cli:codex"],
+      "requires": ["cli:claude", "cli:grok", "cli:codex"]
+    }
+  }
+}

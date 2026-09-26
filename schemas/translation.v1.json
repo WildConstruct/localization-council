@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/translation.v1.json",
+  "title": "Model output: one translation",
+  "description": "What a translate call must return per item. Batched HTTP calls wrap items as { items: [{ key, ...this }] }.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["translation"],
+  "properties": {
+    "translation": { "type": "string", "minLength": 1 }
+  }
+}

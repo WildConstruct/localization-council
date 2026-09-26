@@ -1,0 +1,114 @@
+{
+  "$comment": "Single source of truth for model IDs, named OpenRouter presets, and minimum CLI versions. Docs link here instead of hardcoding IDs. Override per run with --models <file> (merged over this file), --preset, or a stage map such as translate=openrouter:<slug>.",
+  "schemaVersion": 1,
+  "openrouter": {
+    "baseUrl": "https://openrouter.ai/api/v1",
+    "stages": {
+      "translate": "anthropic/claude-opus-5.5",
+      "backtranslate": "x-ai/grok-4.7",
+      "judge": "openai/gpt-5.6-sol"
+    },
+    "faceoff": [
+      "anthropic/claude-opus-5.5",
+      "x-ai/grok-4.7",
+      "openai/gpt-5.6-sol"
+    ],
+    "auditJudges": [
+      "anthropic/claude-opus-5.5",
+      "x-ai/grok-4.7",
+      "openai/gpt-5.6-sol"
+    ],
+    "presets": {
+      "balanced": {
+        "description": "Current defaults: strongest translator, cross-vendor blind back-translation, strong judge.",
+        "stages": {
+          "translate": "anthropic/claude-opus-5.5",
+          "backtranslate": "x-ai/grok-4.7",
+          "judge": "openai/gpt-5.6-sol"
+        },
+        "faceoff": [
+          "anthropic/claude-opus-5.5",
+          "x-ai/grok-4.7",
+          "openai/gpt-5.6-sol"
+        ],
+        "auditJudges": [
+          "anthropic/claude-opus-5.5",
+          "x-ai/grok-4.7",
+          "openai/gpt-5.6-sol"
+        ]
+      },
+      "budget": {
+        "description": "Cheap translate and blind back-translation, strong judge. About half the cost of balanced; the judge is where cheaper models lost the most (docs/model-bakeoff.md).",
+        "stages": {
+          "translate": "deepseek/deepseek-v4.1-flash",
+          "backtranslate": "google/gemini-3.5-flash-lite",
+          "judge": "openai/gpt-5.6-sol"
+        },
+        "faceoff": [
+          "deepseek/deepseek-v4.1-flash",
+          "google/gemini-3.5-flash-lite",
+          "z-ai/glm-5.3-flash"
+        ],
+        "auditJudges": [
+          "openai/gpt-5.6-sol",
+          "deepseek/deepseek-v4.1-flash",
+          "z-ai/glm-5.3-flash"
+        ]
+      },
+      "cheapest": {
+        "description": "Every stage on a low-cost model (about 1/13 of balanced). Catches blatant meaning drift but misses most subtle terminology problems the balanced judge escalates; use for drafts and smoke runs, not sign-off (docs/model-bakeoff.md).",
+        "stages": {
+          "translate": "deepseek/deepseek-v4.1-flash",
+          "backtranslate": "google/gemini-3.5-flash-lite",
+          "judge": "openai/gpt-6-luna"
+        },
+        "faceoff": [
+          "deepseek/deepseek-v4.1-flash",
+          "google/gemini-3.5-flash-lite",
+          "openai/gpt-6-luna"
+        ],
+        "auditJudges": [
+          "openai/gpt-6-luna",
+          "deepseek/deepseek-v4.1-flash",
+          "z-ai/glm-5.3-flash"
+        ]
+      }
+    },
+    "batchSize": {
+      "translate": 20,
+      "backtranslate": 20,
+      "judge": 5,
+      "compare": 5
+    },
+    "timeoutMs": 120000,
+    "maxRetries": 3,
+    "structuredOutput": "json_schema"
+  },
+  "cli": {
+    "claude": {
+      "bin": "claude",
+      "binEnv": "CLAUDE_CLI_BIN",
+      "minVersion": "2.1.280",
+      "defaultModel": "claude-opus-5-5",
+      "modelEnv": "CLAUDE_MODEL"
+    },
+    "grok": {
+      "bin": "grok",
+      "binEnv": "GROK_CLI_BIN",
+      "minVersion": "1.0.34",
+      "defaultModel": null,
+      "modelEnv": null
+    },
+    "codex": {
+      "bin": "codex",
+      "binEnv": "CODEX_CLI_BIN",
+      "minVersion": null,
+      "defaultModel": null,
+      "modelEnv": "CODEX_MODEL"
+    }
+  },
+  "jev": {
+    "decisionsUrl": "https://openrouter.ai/api/alpha/decisions",
+    "defaultModel": "typesafe/jev-1.13"
+  }
+}

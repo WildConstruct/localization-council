@@ -1,0 +1,31 @@
+# Deterministic CI: unit tests, the provider contract test (fixtures + fake
+# CLIs), and the mock / openrouter / fleet parity test against local fakes.
+# No live provider calls and no secrets. Live checks are `npm run smoke:*`,
+# run by hand where keys or CLIs exist.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm test
+      - name: Smoke scripts skip cleanly without keys or CLIs
+        run: |
+          npm run smoke:openrouter
+          npm run smoke:fleet

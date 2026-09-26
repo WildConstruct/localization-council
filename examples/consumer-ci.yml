@@ -1,0 +1,69 @@
+# Copy into your repo as .github/workflows/localization-council.yml.
+# Runs the council on catalog changes and uploads the artifacts for review.
+# The council never merges: people review escalate.json / report.md and
+# merge accepted strings themselves.
+name: localization-council
+
+on:
+  pull_request:
+    paths:
+      - "locales/**"
+
+permissions:
+  contents: read
+
+jobs:
+  council:
+    runs-on: ubuntu-latest
+    env:
+      # Store the key as a repository secret. Leave it unset to run offline (mock).
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install localization-council
+        run: npm install --global github:WildConstruct/localization-council
+
+      - name: Pick a profile
+        id: profile
+        run: |
+          council doctor --json > /tmp/doctor.json || true
+          if [ -n "$OPENROUTER_API_KEY" ]; then echo "name=openrouter" >> "$GITHUB_OUTPUT"; else echo "name=mock" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Run council on the delta
+        id: run
+        run: |
+          set +e
+          council run \
+            --catalog locales/en.json \
+            --locale de \
+            --glossary locales/glossary.de.json \
+            --target locales/de.json \
+            --profile=${{ steps.profile.outputs.name }} \
+            --out scores/de \
+            --json > scores-summary.json
+          code=$?
+          cat scores-summary.json
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          # 0 = clean, 10 = escalations for a human; anything else is an error
+          if [ "$code" -ne 0 ] && [ "$code" -ne 10 ]; then exit "$code"; fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localization-council-de
+          path: |
+            scores/
+            !scores/**/.cache/
+
+      # Optional: make escalations block the PR until a person has looked.
+      - name: Escalations need a human
+        if: steps.run.outputs.code == '10'
+        run: |
+          echo "::warning::Localization Council escalated strings. See the uploaded report.md / escalate.json."
+          # exit 1   # uncomment to make this a required gate

@@ -1,0 +1,35 @@
+{
+  "id": "dec-7b1e04",
+  "model": "typesafe/jev-1.13-20260917",
+  "answers": {
+    "clear_winner": {
+      "type": "noul",
+      "noul": 0.86,
+      "confidence": 0.8
+    },
+    "near_tie": {
+      "type": "noul",
+      "noul": 0.14,
+      "confidence": 0.78
+    },
+    "winner": {
+      "type": "choice",
+      "choice": "X",
+      "probabilities": {
+        "X": 0.81,
+        "Y": 0.19
+      },
+      "confidence": 0.8
+    },
+    "differentiation_enough": {
+      "type": "noul",
+      "noul": 0.82,
+      "confidence": 0.77
+    }
+  },
+  "usage": {
+    "input_tokens": 280,
+    "output_tokens": 40,
+    "cost": 0.000055
+  }
+}

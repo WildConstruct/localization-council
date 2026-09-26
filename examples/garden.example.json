@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "name": "example-garden",
+  "description": "Example garden: one site repo with marketing and docs catalogs. Only locales in localeTiers.active are walked; move a locale from deferred to active (and add its catalog rows) to promote it. Paths are relative to the repo checkout (<root>/<repo-name>/...).",
+  "localeTiers": {
+    "active": [
+      "de"
+    ],
+    "deferred": [
+      "es",
+      "fr",
+      "it",
+      "ja",
+      "ko",
+      "pt-BR",
+      "ru",
+      "zh-CN",
+      "tr",
+      "ar",
+      "he"
+    ],
+    "notes": "Start narrow. Promote a deferred locale deliberately: add its source↔target rows and move it into active once someone can review its escalations. tr, ar and he are exercised by fixtures/rtl-smoke."
+  },
+  "repos": [
+    {
+      "repo": "your-org/your-site",
+      "note": "marketing + docs catalogs (page-wrapper format)",
+      "catalogs": [
+        {
+          "id": "picker",
+          "source": "locales/en/picker.json",
+          "target": "locales/de/picker.json",
+          "locale": "de",
+          "glossary": null
+        },
+        {
+          "id": "common",
+          "source": "locales/en/common.json",
+          "target": "locales/de/common.json",
+          "locale": "de",
+          "glossary": null
+        },
+        {
+          "id": "home",
+          "source": "locales/en/home.json",
+          "target": "locales/de/home.json",
+          "locale": "de",
+          "glossary": null
+        },
+        {
+          "id": "pricing",
+          "source": "locales/en/pricing.json",
+          "target": "locales/de/pricing.json",
+          "locale": "de",
+          "glossary": null
+        },
+        {
+          "id": "docs-hub",
+          "source": "locales/en/docs-hub.json",
+          "target": "locales/de/docs-hub.json",
+          "locale": "de",
+          "glossary": null
+        },
+        {
+          "id": "common",
+          "source": "locales/en/common.json",
+          "target": "locales/ja/common.json",
+          "locale": "ja",
+          "glossary": null,
+          "note": "deferred example — skipped until ja is promoted into localeTiers.active"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/stage-results.v1.json",
+  "title": "Normalized provider results",
+  "description": "Every adapter (mock, cli:*, openrouter:*, api:jev) returns one of these per input item. The contract test checks all adapters against these definitions.",
+  "$defs": {
+    "model": { "type": ["string", "null"] },
+    "translate": {
+      "type": "object",
+      "required": ["key", "locale", "source", "candidate", "provider", "model"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "locale": { "type": "string", "minLength": 1 },
+        "source": { "type": "string" },
+        "candidate": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "$ref": "#/$defs/model" }
+      }
+    },
+    "backtranslate": {
+      "type": "object",
+      "required": ["key", "locale", "candidate", "backtranslation", "provider", "model"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "locale": { "type": "string", "minLength": 1 },
+        "candidate": { "type": "string" },
+        "backtranslation": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "$ref": "#/$defs/model" }
+      }
+    },
+    "judge": {
+      "type": "object",
+      "required": ["key", "meaning", "fluency", "glossaryOk", "glossaryNotes", "escalate", "rationale", "provider", "model"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "meaning": { "type": "number", "minimum": 0, "maximum": 1 },
+        "fluency": { "type": "number", "minimum": 0, "maximum": 1 },
+        "glossaryOk": { "type": "boolean" },
+        "glossaryNotes": { "type": "array", "items": { "type": "string" } },
+        "escalate": { "type": "boolean" },
+        "rationale": { "type": "string" },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "$ref": "#/$defs/model" }
+      }
+    },
+    "compare": {
+      "type": "object",
+      "required": ["key", "pick", "rationale", "provider", "model"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "pick": { "type": ["string", "null"] },
+        "rationale": { "type": "string" },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "$ref": "#/$defs/model" },
+        "abstainReasons": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "name": "localization-council",
+  "version": "0.2.0",
+  "description": "Localization evaluation harness: glossary-aware translation (you supply the glossary), blind back-translation, a scored judge, and human escalation. Runs on local CLIs, one OpenRouter key, or offline.",
+  "type": "module",
+  "bin": {
+    "council": "./src/cli.mjs",
+    "localization-council": "./src/cli.mjs",
+    "council-mcp": "./src/mcp-server.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "src",
+    "config",
+    "schemas",
+    "fixtures",
+    "examples",
+    "docs",
+    "skills",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs && node fixtures/website/normalize-smoke.mjs",
+    "demo": "node src/cli.mjs run --catalog fixtures/toy/en.json --locale de --glossary fixtures/toy/glossary.de.json --profile=mock --out scores/de-demo --verbose",
+    "doctor": "node src/cli.mjs doctor",
+    "smoke:openrouter": "node scripts/smoke.mjs openrouter",
+    "smoke:fleet": "node scripts/smoke.mjs fleet"
+  },
+  "keywords": [
+    "localization",
+    "translation",
+    "evaluation",
+    "i18n",
+    "l10n",
+    "llm",
+    "openrouter",
+    "back-translation",
+    "glossary"
+  ],
+  "license": "MIT",
+  "author": "Wild Construct, Inc.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WildConstruct/localization-council.git"
+  },
+  "homepage": "https://github.com/WildConstruct/localization-council#readme",
+  "bugs": {
+    "url": "https://github.com/WildConstruct/localization-council/issues"
+  }
+}

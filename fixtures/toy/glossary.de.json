@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "0",
+  "locale": "de",
+  "entries": [
+    {
+      "source": "composition",
+      "locale": "de",
+      "productMeaning": "A timeline container for layers, effects, and timing — the primary edit unit.",
+      "relatedTerms": ["comp", "sequence"],
+      "practitionerTerm": "Komposition",
+      "approved": true,
+      "rejected": [
+        {
+          "term": "Zusammensetzung",
+          "why": "Sounds like chemical composition; not used by motion practitioners."
+        }
+      ]
+    },
+    {
+      "source": "pre-compose",
+      "locale": "de",
+      "productMeaning": "Nest selected layers into a new composition.",
+      "relatedTerms": ["Pre-comp", "Precompose"],
+      "practitionerTerm": "Vorkomponieren",
+      "approved": true,
+      "rejected": [
+        {
+          "term": "Vorab zusammenstellen",
+          "why": "Too literal; breaks muscle memory for users of compositing tools."
+        }
+      ]
+    },
+    {
+      "source": "onion skin",
+      "locale": "de",
+      "productMeaning": "Semi-transparent overlay of adjacent frames for frame-by-frame animation.",
+      "relatedTerms": ["Onion skinning", "ghost frames"],
+      "practitionerTerm": "Onion Skin",
+      "approved": true,
+      "rejected": [
+        {
+          "term": "Zwiebelschale",
+          "why": "Calque that confuses artists; keep English loan in UI."
+        },
+        {
+          "term": "Geisterbilder",
+          "why": "Implies haunt/ghost UI, not standard animation jargon."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/judge-verdict.v1.json",
+  "title": "Model output: one judge verdict",
+  "description": "Strict judge verdict. Missing or out-of-range fields are errors, never a pass.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meaning", "fluency", "glossaryOk", "escalate", "rationale"],
+  "properties": {
+    "meaning": { "type": "number", "minimum": 0, "maximum": 1 },
+    "fluency": { "type": "number", "minimum": 0, "maximum": 1 },
+    "glossaryOk": { "type": "boolean" },
+    "escalate": { "type": "boolean" },
+    "rationale": { "type": "string" }
+  }
+}

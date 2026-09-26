@@ -1,0 +1,14 @@
+{
+  "ui.timeline.play": "Play",
+  "ui.timeline.pause": "Pause",
+  "ui.comp.new": "New composition",
+  "ui.layer.precomp": "Pre-compose",
+  "ui.viewport.onion": "Onion skin",
+  "ui.render.queue": "Add to render queue",
+  "ui.keyframe.ease": "Ease in / out",
+  "ui.status.rendering": "Rendering…",
+  "ui.error.gpu": "GPU unavailable — falling back to CPU",
+  "ui.layers.count": "{count, plural, one {# layer} other {# layers}}",
+  "ui.export.done": "Export complete",
+  "ui.help.docs": "Open documentation"
+}

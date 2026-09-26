@@ -1,0 +1,9 @@
+{
+  "page": "common",
+  "locale": "de",
+  "_comment": ["Fixture: locale map wrapper"],
+  "strings": {
+    "Skip to content": "Zum Inhalt springen",
+    "Products": "Produkte"
+  }
+}

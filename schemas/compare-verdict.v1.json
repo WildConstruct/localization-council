@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/compare-verdict.v1.json",
+  "title": "Model output: one blind comparative pick",
+  "description": "Pick the best labeled option (X/Y/Z…) or \"none\" when no option is acceptable. Any other value is a missing verdict.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pick", "rationale"],
+  "properties": {
+    "pick": { "type": "string", "minLength": 1 },
+    "rationale": { "type": "string" }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "0",
+  "locale": "ja",
+  "entries": [
+    {
+      "source": "Onion skin",
+      "locale": "ja",
+      "productMeaning": "onion-skinning overlay in timeline/viewport",
+      "relatedTerms": ["onion skinning"],
+      "practitionerTerm": "オニオンスキン",
+      "approved": true,
+      "rejected": [{ "term": "玉ねぎの皮", "why": "food literal; not compositing-tool usage" }]
+    },
+    {
+      "source": "Pre-compose",
+      "locale": "ja",
+      "productMeaning": "pre-compose / nest composition (compositing tools)",
+      "relatedTerms": ["precomp"],
+      "practitionerTerm": "プリコンポーズ",
+      "approved": true,
+      "rejected": [{ "term": "事前に構成する", "why": "calque; practitioners say プリコンポーズ" }]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "id": "gen-1758790000-7kQ2mZpL0cXw",
+  "provider": "Anthropic",
+  "model": "anthropic/claude-opus-5.5",
+  "object": "chat.completion",
+  "created": 1758790000,
+  "choices": [
+    {
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "end_turn",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"items\":[{\"key\":\"ui.timeline.play\",\"translation\":\"Abspielen\"},{\"key\":\"ui.viewport.onion\",\"translation\":\"Onion Skin\"}]}",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 418,
+    "completion_tokens": 24,
+    "total_tokens": 442,
+    "cost": 0.00312,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  }
+}

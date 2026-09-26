@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/manifest.v1.json",
+  "title": "Run manifest (manifest.json under --out)",
+  "description": "Everything needed to explain or reproduce a run: profile and resolved models, thresholds and seed, tool versions, cost, and cache use.",
+  "type": "object",
+  "required": ["schema", "councilVersion", "startedAt", "finishedAt", "locale", "profile", "providers", "models", "thresholds", "seed", "postEscalate", "tools", "cost", "cache", "counts", "warnings"],
+  "properties": {
+    "schema": { "const": "council.manifest.v1" },
+    "profile": { "type": "string" },
+    "preset": { "type": ["string", "null"] },
+    "stageModels": {
+      "type": "object",
+      "properties": {
+        "translate": { "type": "string" },
+        "backtranslate": { "type": "string" },
+        "judge": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "providers": {
+      "type": "object",
+      "required": ["translate", "backtranslate", "judge"]
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["requested", "resolved"],
+        "properties": {
+          "requested": { "type": ["string", "null"] },
+          "resolved": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "required": ["meaning", "faceoffMargin", "consensusMin", "auditConsensusMin"]
+    },
+    "seed": { "type": "integer", "minimum": 0 },
+    "tools": {
+      "type": "object",
+      "required": ["node", "platform", "cli"]
+    },
+    "cost": {
+      "type": "object",
+      "required": ["usd", "complete", "byStage"],
+      "properties": { "usd": { "type": "number", "minimum": 0 }, "complete": { "type": "boolean" } }
+    },
+    "cache": {
+      "type": "object",
+      "required": ["dir", "enabled", "hits", "misses"]
+    }
+  }
+}

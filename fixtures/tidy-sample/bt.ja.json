@@ -1,0 +1,8 @@
+[
+  { "key": "ui.timeline.play", "backtranslation": "Playback" },
+  { "key": "ui.timeline.pause", "backtranslation": "Temporary stop" },
+  { "key": "ui.comp.new", "backtranslation": "New composition" },
+  { "key": "ui.layer.precomp", "backtranslation": "Pre-compose" },
+  { "key": "ui.viewport.onion", "backtranslation": "Onion skin" },
+  { "key": "ui.status.rendering", "backtranslation": "Rendering…" }
+]

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "0",
+  "locale": "tr",
+  "entries": [
+    {
+      "source": "composition",
+      "locale": "tr",
+      "productMeaning": "A timeline container for layers, effects, and timing — the primary edit unit.",
+      "relatedTerms": ["comp", "sequence"],
+      "practitionerTerm": "Composition",
+      "approved": true,
+      "rejected": [
+        {
+          "term": "Bileşim",
+          "why": "Sounds like chemical composition; motion-graphics practitioners keep the English loan."
+        }
+      ]
+    },
+    {
+      "source": "pre-compose",
+      "locale": "tr",
+      "productMeaning": "Nest selected layers into a new composition.",
+      "relatedTerms": ["Pre-comp", "Precompose"],
+      "practitionerTerm": "Pre-compose",
+      "approved": true,
+      "rejected": [
+        {
+          "term": "Önceden oluştur",
+          "why": "Too literal; breaks muscle memory for compositing-tool users who keep Latin-script tool verbs."
+        }
+      ]
+    },
+    {
+      "source": "onion skin",
+      "locale": "tr",
+      "productMeaning": "Semi-transparent overlay of adjacent frames for frame-by-frame animation.",
+      "relatedTerms": ["Onion skinning", "ghost frames"],
+      "practitionerTerm": "Onion skin",
+      "approved": true,
+      "rejected": [
+        {
+          "term": "Soğan kabuğu",
+          "why": "Calque that confuses artists; keep English loan in UI."
+        }
+      ]
+    }
+  ]
+}
