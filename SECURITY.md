@@ -7,7 +7,8 @@ Please report security issues privately. Don't open a public issue.
 - **Preferred:** GitHub private vulnerability reporting. Open the repository's **Security** tab,
   choose **Report a vulnerability**, and fill in the form
   (<https://github.com/WildConstruct/localization-council/security/advisories/new>).
-<!-- TODO(maintainer): add a security contact email here if you want one alongside GitHub reporting. -->
+- **Alternate:** email <support@wildconstruct.com> with "security" in the subject line if you
+  can't use GitHub reporting.
 
 Include the affected version or commit, how to reproduce, and the impact. We aim to acknowledge
 reports within 5 business days and will coordinate a fix and disclosure date with you.
