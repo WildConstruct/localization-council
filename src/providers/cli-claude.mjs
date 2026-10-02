@@ -28,7 +28,7 @@ import {
   parseJudgeJson,
   parseCompareJson,
 } from "./judge-schema.mjs";
-import { comparePrompt, termsPrompt } from "./prompts.mjs";
+import { comparePrompt, termsPrompt, PROMPT_VERSION } from "./prompts.mjs";
 import { TERMS_OUTPUT_SCHEMA, parseTermsJson } from "./terms-schema.mjs";
 import { glossaryPromptBlock } from "../glossary.mjs";
 
@@ -228,7 +228,7 @@ export function createClaudeAdapter(opts = {}) {
         provider: PROVIDER_ID,
         model: claudeModel(stage, opts.models),
         family: "anthropic",
-        promptVersion: `cli-claude/${stage}@1`,
+        promptVersion: `cli-claude/${stage}@${stage === "terms" ? PROMPT_VERSION.terms : 1}`,
         cacheSalt: `effort=${claudeEffort(stage) || "default"}`,
       };
     },

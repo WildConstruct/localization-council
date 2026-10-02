@@ -80,6 +80,15 @@ describe("runCouncil (mock profile)", () => {
     assert.equal(fresh.counts.cacheHits, 0);
   });
 
+  it("a glossary none of whose entries apply re-runs nothing", async () => {
+    const out = tmp("gnone");
+    await runCouncil({ ...base, glossary: undefined, out });
+    const g = { schemaVersion: "0", locale: "de", entries: [{ ...readJson(base.glossary).entries[0], source: "zebra", relatedTerms: [] }] };
+    const gPath = join(out, "glossary.zebra.json");
+    writeFileSync(gPath, JSON.stringify(g));
+    assert.equal((await runCouncil({ ...base, glossary: gPath, out })).counts.cacheHits, 60);
+  });
+
   it("the cache key covers only the glossary entries a string uses", async () => {
     const out = tmp("gv");
     await runCouncil({ ...base, out });

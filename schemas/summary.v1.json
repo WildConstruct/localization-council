@@ -383,7 +383,7 @@
     },
     "glossary": {
       "type": "object",
-      "description": "council glossary harvest | apply. `proposals` lists the proposals still waiting for a person's decision (exit 10 when there are any).",
+      "description": "council glossary harvest | apply. `proposals` lists proposals not yet in the glossary: decision null means a person still has to decide; a decision means it waits for `council glossary apply`. Exit 10 while there are any.",
       "required": ["status", "action", "locale", "outDir", "artifacts", "counts", "proposals", "costUsd"],
       "properties": {
         "command": { "const": "glossary" },
@@ -411,6 +411,10 @@
           }
         },
         "written": { "enum": ["in_place", "next_file", "nothing"] },
+        "skipped": {
+          "type": "array",
+          "items": { "type": "object", "required": ["source", "reason"], "properties": { "source": { "type": "string" }, "reason": { "type": "string" } } }
+        },
         "newGlossary": { "type": "boolean" },
         "costUsd": { "type": ["number", "null"] }
       }

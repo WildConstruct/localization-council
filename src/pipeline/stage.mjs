@@ -57,7 +57,8 @@ export async function runStage({ stage, adapter, locale, glossary = null, items,
       promptVersion: desc.promptVersion,
       salt: [desc.cacheSalt ?? null, ctx.providerSalt?.[desc.provider] ?? null],
       locale,
-      glossary: useGlossary ? glossaryHash(slices[i]) : null,
+      // No entry applies → the same key as a run without a glossary.
+      glossary: slices[i] ? glossaryHash(slices[i]) : null,
       key: item.key,
       input: inputsOf(stage, item),
     });

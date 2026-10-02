@@ -218,13 +218,16 @@ export function parseArgs(argv) {
 }
 
 function checkFlags(cmd, args) {
+  if (args.help) return; // help ignores the other flags
   let name = cmd;
-  let allowed = COMMAND_FLAGS[cmd] || [];
-  if (cmd === "glossary" && !args.help) {
+  let allowed = COMMAND_FLAGS[cmd];
+  if (cmd === "glossary") {
     const action = args._[0];
-    if (!GLOSSARY_FLAGS[action]) {
+    if (!Object.hasOwn(GLOSSARY_FLAGS, action ?? "")) {
       throw new UsageError(`glossary needs an action: harvest or apply${action ? ` (not "${action}")` : ""}. Try: council help`);
     }
+    // A stray word is refused rather than ignored: "--write false" must not mean --write.
+    if (args._.length > 1) throw new UsageError(`Unexpected argument "${args._[1]}" for "glossary ${action}"`);
     name = `glossary ${action}`;
     allowed = GLOSSARY_FLAGS[action];
   }
@@ -299,7 +302,8 @@ function humanRun(s, out, err, verbose) {
   out(`Report: ${s.artifacts.report}\nSheet:  ${s.artifacts.escalate}\n`);
 }
 
-function humanHarvest(s, out, verbose) {
+function humanHarvest(s, out, err, verbose) {
+  for (const w of s.warnings) err(`warning: ${w.message}\n`);
   if (!s.proposals.length) {
     if (verbose) out(`${s.locale}: ${s.counts.terms} term(s) seen in ${s.counts.pairs} shipped string(s); nothing new for the glossary.\n`);
     return;
@@ -321,6 +325,7 @@ function humanApply(s, out, err) {
       out(`${c.affectedKeys} key(s) use the new terms. Re-audit the shipped ones: council tidy … --keys-file ${s.artifacts.affectedKeys}\n`);
     }
   }
+  for (const x of s.skipped) out(`Skipped "${x.source}": ${x.reason}.\n`);
   if (c.pending) out(`${c.pending} proposal(s) still need a decision.\n`);
 }
 
@@ -360,7 +365,7 @@ export async function main(argv, io = {}) {
   let args = { _: [] };
   try {
     args = parseArgs(argv.slice(1));
-    if (!COMMAND_FLAGS[cmd]) throw new UsageError(`Unknown command "${cmd}". Try: council help`);
+    if (!Object.hasOwn(COMMAND_FLAGS, cmd)) throw new UsageError(`Unknown command "${cmd}". Try: council help`);
     checkFlags(cmd, args);
     if (args.help) cmd = "help";
 
@@ -447,7 +452,7 @@ export async function main(argv, io = {}) {
         fetchImpl: io.fetchImpl,
         argv,
       });
-      if (!args.json) humanHarvest(summary, out, args.verbose);
+      if (!args.json) humanHarvest(summary, out, err, args.verbose);
     } else if (cmd === "glossary") {
       summary = await runGlossaryApply({ proposals: args.proposals, glossary: args.glossary, out: args.out, write: Boolean(args.write), argv });
       if (!args.json) humanApply(summary, out, err);
@@ -487,9 +492,9 @@ export async function main(argv, io = {}) {
     if (args.json) out(JSON.stringify(summary, null, 2) + "\n");
     return summary.exitCode;
   } catch (e) {
-    const summary = errorSummary(COMMAND_FLAGS[cmd] ? cmd : "help", e);
+    const summary = errorSummary(Object.hasOwn(COMMAND_FLAGS, cmd) ? cmd : "help", e);
     if (summary.command === "help") summary.usage = null;
-    if (summary.command === "glossary") summary.action = GLOSSARY_FLAGS[args._?.[0]] ? args._[0] : null;
+    if (summary.command === "glossary") summary.action = Object.hasOwn(GLOSSARY_FLAGS, args._?.[0] ?? "") ? args._[0] : null;
     err(`error: ${summary.errors[0].message}\n`);
     // Honor --json even when argument parsing itself failed.
     if (args.json || argv.includes("--json")) out(JSON.stringify(summary, null, 2) + "\n");

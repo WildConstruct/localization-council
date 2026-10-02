@@ -135,25 +135,47 @@ export function findRejectedTerms(source, candidate, glossary) {
 }
 
 const WORD_CHAR = "[\\p{L}\\p{N}]";
+const SEP_CLASS = "[-\\s\\u2010-\\u2013]";
+const SEP_SPLIT = /[\s\-‐-–]+/u;
 const termRegexCache = new Map();
 
 function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** English inflections of a term's last word: s/es/'s/d/ed/ing, e-drop, y→ies/ied, doubled consonant. */
-function lastWordPattern(word) {
-  const forms = [`${escapeRe(word)}(?:s|es|'s|’s|d|ed|ing|ings)?`];
-  if (/[a-z]e$/.test(word)) forms.push(`${escapeRe(word.slice(0, -1))}(?:ing|ings)`);
-  if (/[^aeiou]y$/.test(word)) forms.push(`${escapeRe(word.slice(0, -1))}(?:ies|ied)`);
-  if (/[^aeiou][aeiou][bdgklmnprt]$/.test(word)) forms.push(`${escapeRe(word + word.at(-1))}(?:ed|ing|ings)`);
-  return forms.length === 1 ? forms[0] : `(?:${forms.join("|")})`;
+/** A term's words, lowercased. Hyphens and spaces between them don't matter for matching. */
+function termWords(term) {
+  return String(term ?? "").normalize("NFC").trim().toLowerCase().split(SEP_SPLIT).filter(Boolean);
 }
 
+/** `s` with an optional hyphen or space between every two letters: "precompose" ⇄ "pre-compose". */
+function loose(s) {
+  return [...s].map(escapeRe).join(`${SEP_CLASS}?`);
+}
+
+/**
+ * Pattern for a term: its letters with optional separators, plus English inflections of the last
+ * word. Short words get few: two letters ("US", "IT") none, three letters only the plural, so
+ * "car" doesn't match "card" and "set" doesn't match "settings".
+ */
 function termBody(term) {
-  const words = String(term ?? "").normalize("NFC").trim().toLowerCase().split(/[\s\-\u2010-\u2013]+/u).filter(Boolean);
+  const words = termWords(term);
   if (!words.length) return null;
-  return [...words.slice(0, -1).map(escapeRe), lastWordPattern(words.at(-1))].join("[-\\s\\u2010-\\u2013]?");
+  const head = words.slice(0, -1).join("");
+  const w = words.at(-1);
+  const sibilant = /(?:s|x|z|ch|sh|o)$/.test(w);
+  const forms = [];
+  if (w.length <= 2) forms.push([w, ""]);
+  else if (w.length === 3) forms.push([w, sibilant ? "(?:s|es|'s|’s)?" : "(?:s|'s|’s)?"]);
+  else {
+    const suffixes = ["s", "'s", "’s", ...(sibilant ? ["es"] : []), ...(w.endsWith("e") ? ["d"] : ["ed", "ing", "ings"])];
+    forms.push([w, `(?:${suffixes.join("|")})?`]);
+    if (w.endsWith("e")) forms.push([w.slice(0, -1), "(?:ing|ings)"]); // compose → composing
+    if (/[^aeiou]y$/.test(w)) forms.push([w.slice(0, -1), "(?:ies|ied)"]); // copy → copies
+    if (/[^aeiou][aeiou][bdgklmnprt]$/.test(w)) forms.push([w + w.at(-1), "(?:ed|ing)"]); // skin → skinning
+  }
+  const alts = forms.map(([stem, suffix]) => loose(head + stem) + suffix);
+  return alts.length === 1 ? alts[0] : `(?:${alts.join("|")})`;
 }
 
 function cachedRegex(kind, term, build) {
@@ -167,31 +189,41 @@ function cachedRegex(kind, term, build) {
 
 /**
  * Regex that finds an English glossary term in English text: whole words only, case-insensitive,
- * hyphen/space/no-space variants ("pre-compose", "precompose") and common English inflections of
- * the last word ("layers", "skinning", "composing").
+ * hyphen/space/no-space variants in either direction ("pre-compose" ⇄ "precompose") and common
+ * English inflections of the last word ("layers", "skinning", "composing").
  */
 export function termRegex(term) {
   return cachedRegex("find", term, (body) => new RegExp(`(?<!${WORD_CHAR})${body}(?!${WORD_CHAR})`, "iu"));
 }
 
 /**
- * A lowercase substring every match of `term` contains: the first word of a multi-word term, or a
- * single word without the final e/y its inflections drop. A cheap test before the regex.
+ * A lowercase string every match of `term` contains once hyphens and spaces are removed: the term
+ * without separators, minus a final e/y that its inflections drop. A cheap test before the regex.
  */
 function termNeedle(term) {
-  const words = String(term ?? "").normalize("NFC").trim().toLowerCase().split(/[\s\-\u2010-\u2013]+/u).filter(Boolean);
-  const needle = words[0] ?? "";
-  return words.length === 1 && /[a-z][ey]$/.test(needle) ? needle.slice(0, -1) : needle;
+  const words = termWords(term);
+  const squashed = words.join("");
+  return (words.at(-1)?.length ?? 0) > 3 && /[ey]$/.test(squashed) ? squashed.slice(0, -1) : squashed;
 }
 
-/** Per-glossary matchers, built once per entries array. */
+/** Lowercase text without hyphens and spaces, the haystack for termNeedle. */
+function squash(text) {
+  return text.toLowerCase().replace(/[\s\-‐-–]+/gu, "");
+}
+
+/** Per-glossary matchers (an entry's source and related terms), built once per entries array. */
 const compiledEntries = new WeakMap();
 
 function matchers(entries) {
   if (!compiledEntries.has(entries)) {
     compiledEntries.set(
       entries,
-      entries.map((e) => ({ entry: e, needle: termNeedle(e.source), re: termRegex(e.source) })),
+      entries.map((e) => ({
+        entry: e,
+        terms: [e.source, ...(Array.isArray(e.relatedTerms) ? e.relatedTerms : [])]
+          .map((t) => ({ needle: termNeedle(t), re: termRegex(t) }))
+          .filter((t) => t.re),
+      })),
     );
   }
   return compiledEntries.get(entries);
@@ -213,20 +245,37 @@ export function sameTerm(a, b) {
 }
 
 /**
- * The part of a glossary that applies to some English strings: the entries whose source term
- * appears in at least one of them. Providers get only this slice, and the result cache keys on it,
- * so adding an entry re-runs only the strings that use the new term. `declined` never reaches a
- * provider. Returns null when no entry applies.
+ * Keys of `enMap` whose English contains any of `terms`. Prefilters with a substring test, so it
+ * stays fast across a whole catalog.
+ * @param {Record<string,string>} enMap
+ * @param {string[]} terms
+ */
+export function keysUsingTerm(enMap, terms) {
+  const ms = terms.map((t) => ({ needle: termNeedle(t), re: termRegex(t) })).filter((m) => m.re);
+  const out = [];
+  for (const [k, v] of Object.entries(enMap)) {
+    const text = String(v ?? "").normalize("NFC");
+    const flat = squash(text);
+    if (ms.some((m) => flat.includes(m.needle) && m.re.test(text))) out.push(k);
+  }
+  return out.sort();
+}
+
+/**
+ * The part of a glossary that applies to some English strings: the entries whose source term, or
+ * one of their related terms, appears in at least one of them. Providers get only this slice, and
+ * the result cache keys on it, so adding an entry re-runs only the strings that use the new term.
+ * `declined` never reaches a provider. Returns null when no entry applies.
  * @param {object|null} glossary
  * @param {string[]} sources
  */
 export function glossarySlice(glossary, sources) {
   if (!glossary?.entries?.length) return null;
   const texts = sources.map((s) => String(s ?? "").normalize("NFC"));
-  const lowered = texts.map((t) => t.toLowerCase());
+  const flats = texts.map(squash);
   const entries = [];
   for (const m of matchers(glossary.entries)) {
-    if (m.re && texts.some((t, i) => lowered[i].includes(m.needle) && m.re.test(t))) entries.push(m.entry);
+    if (m.terms.some((t) => texts.some((text, i) => flats[i].includes(t.needle) && t.re.test(text)))) entries.push(m.entry);
   }
   if (!entries.length) return null;
   return { schemaVersion: glossary.schemaVersion, locale: glossary.locale, entries };

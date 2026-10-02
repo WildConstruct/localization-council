@@ -22,7 +22,7 @@ import {
   parseJudgeJson,
   parseCompareJson,
 } from "./judge-schema.mjs";
-import { comparePrompt, termsPrompt } from "./prompts.mjs";
+import { comparePrompt, termsPrompt, PROMPT_VERSION } from "./prompts.mjs";
 import { TERMS_OUTPUT_SCHEMA, parseTermsJson } from "./terms-schema.mjs";
 import { ICU_PRESERVE_PROMPT } from "../icu.mjs";
 import { glossaryPromptBlock } from "../glossary.mjs";
@@ -185,7 +185,7 @@ export function createGrokAdapter(opts = {}) {
     id: PROVIDER_ID,
     family: "xai",
     describe(stage) {
-      return { provider: PROVIDER_ID, model: grokModel(opts.models) || "cli-default", family: "xai", promptVersion: `cli-grok/${stage}@1` };
+      return { provider: PROVIDER_ID, model: grokModel(opts.models) || "cli-default", family: "xai", promptVersion: `cli-grok/${stage}@${stage === "terms" ? PROMPT_VERSION.terms : 1}` };
     },
     batchSize() {
       return 1;

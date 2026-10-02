@@ -132,7 +132,12 @@ describe("council glossary harvest", () => {
     const doc = readJson(s.artifacts.proposals);
     assert.equal(doc.schema, "council.glossary-proposals.v1");
     assert.equal(doc.proposals[0].decision, null);
-    assert.deepEqual(doc.proposals[0].suggested, { source: "keyframe", practitionerTerm: "Keyframe", productMeaning: doc.proposals[0].productMeaning });
+    assert.deepEqual(doc.proposals[0].suggested, {
+      source: "keyframe",
+      practitionerTerm: "Keyframe",
+      productMeaning: doc.proposals[0].productMeaning,
+      reject: [],
+    });
     assert.match(readFileSync(s.artifacts.report, "utf8"), /keyframe \(3 keys, renderings disagree\)/);
     // The glossary itself is never touched by harvest.
     assert.deepEqual(readJson(join(G, "glossary.de.json")).entries.length, 2);
@@ -174,6 +179,49 @@ describe("council glossary harvest", () => {
     assert.equal(clean.stdout, "");
   });
 
+  it("never overwrites a proposals file it can't read", async () => {
+    const out = tmp();
+    const h = summary(await council([...HARVEST, "--out", out, "--json"]));
+    const broken = readFileSync(h.artifacts.proposals, "utf8").replace('"decision": null', '"decision": "approve",,');
+    writeFileSync(h.artifacts.proposals, broken);
+    const r = await council([...HARVEST, "--out", out, "--json"]);
+    assert.equal(r.code, 2);
+    assert.match(summary(r).errors[0].message, /isn't valid JSON/);
+    assert.equal(readFileSync(h.artifacts.proposals, "utf8"), broken);
+  });
+
+  it("keeps a decided proposal that a narrower harvest doesn't propose again", async () => {
+    const out = tmp();
+    const h = summary(await council([...HARVEST, "--out", out, "--json"]));
+    decide(h.artifacts.proposals, { "render queue": { decision: "decline", why: "We keep this one free." } });
+    const keys = join(out, "keys.txt");
+    writeFileSync(keys, "ui.layer.add\nui.layer.delete\n");
+    const narrow = summary(await council([...HARVEST, "--keys-file", keys, "--out", out, "--json"]));
+    assert.equal(narrow.counts.stale, 1);
+    const doc = readJson(narrow.artifacts.proposals);
+    const kept = doc.proposals.find((p) => p.id === "render queue");
+    assert.equal(kept.decision, "decline");
+    assert.equal(kept.stale, true);
+    const full = readJson(summary(await council([...HARVEST, "--out", out, "--json"])).artifacts.proposals);
+    const back = full.proposals.find((p) => p.id === "render queue");
+    assert.equal(back.decision, "decline");
+    assert.equal(back.stale, undefined);
+  });
+
+  it("sets empty or unbacked extractor answers aside instead of failing", () => {
+    const { observations, unverified } = verifyTerms([
+      { key: "a", source: "Add layer", candidate: "Hinzufügen", terms: [{ source: "layer", target: "", base: "", productMeaning: "" }] },
+    ]);
+    assert.equal(observations.length, 0);
+    assert.equal(unverified[0].reason, "empty_term");
+  });
+
+  it("warns when no profile was given and the mock extractor ran", async (t) => {
+    if (process.env.COUNCIL_PROFILE || process.env.COUNCIL_PROVIDER) return t.skip("a profile is set in the environment");
+    const s = summary(await council([...HARVEST.slice(0, -1), "--out", tmp(), "--json"]));
+    assert.equal(s.warnings[0].code, "mock_profile_default");
+  });
+
   it("rejects bad flags and a glossary for another locale with exit 2", async () => {
     assert.equal((await council(["glossary", "--json"])).code, 2);
     assert.equal((await council(["glossary", "prune", "--json"])).code, 2);
@@ -185,6 +233,14 @@ describe("council glossary harvest", () => {
     assert.equal(s.action, "harvest");
     assert.deepEqual(s.proposals, []);
     assert.equal((await council([...HARVEST, "--extractor", "api:jev", "--out", tmp(), "--json"])).code, 2);
+    for (const action of ["constructor", "toString", "__proto__"]) {
+      const bad = await council(["glossary", action, "--json"]);
+      assert.equal(bad.code, 2, action);
+      assert.equal(summary(bad).action, null);
+    }
+    assert.equal((await council(["constructor", "--json"])).code, 2);
+    assert.equal((await council([...HARVEST, "--preset", "budget", "--out", tmp(), "--json"])).code, 2, "a preset can't change the mock extractor");
+    assert.equal((await council([...HARVEST, "--catalog", "x", "--help"])).code, 0, "help ignores other flags");
   });
 });
 
@@ -276,6 +332,7 @@ describe("council glossary apply", () => {
     const before = readFileSync(g, "utf8");
     for (const bad of [
       { keyframe: { decision: "approve", reject: ["keyframe"] } },
+      { keyframe: { decision: "approve", practitionerTerm: "Vorkeyframe", reject: ["Keyframe"] } },
       { keyframe: { decision: "yes" } },
       { keyframe: { decision: "approve", practitionerTerm: " " } },
     ]) {
@@ -284,6 +341,10 @@ describe("council glossary apply", () => {
       assert.equal(r.code, 2, JSON.stringify(bad));
       assert.equal(readFileSync(g, "utf8"), before);
     }
+    decide(h.artifacts.proposals, { keyframe: { decision: "approve", reject: [], practitionerTerm: "Keyframe" } });
+    const stray = await council(["glossary", "apply", "--proposals", h.artifacts.proposals, "--glossary", g, "--write", "false", "--json"]);
+    assert.equal(stray.code, 2, '"--write false" is refused, not read as --write');
+    assert.equal(readFileSync(g, "utf8"), before);
     writeFileSync(join(out, "other.json"), "{}");
     assert.equal((await council(["glossary", "apply", "--proposals", join(out, "other.json"), "--glossary", g, "--json"])).code, 2);
   });
@@ -296,8 +357,26 @@ describe("council glossary apply", () => {
       proposals: [{ id: "compositions", source: "Compositions", practitionerTerm: "Komposition", decision: "approve", reject: [] }],
     };
     const r = applyProposals(glossary, doc);
-    assert.deepEqual(r.skipped, [{ source: "Compositions", reason: "already_in_glossary" }]);
+    assert.deepEqual(r.skipped, [{ source: "Compositions", decision: "approve", reason: 'already in the glossary as "composition"' }]);
     assert.equal(r.glossary.entries.length, 2);
+    // A related term counts too, but a longer word that merely starts the same doesn't.
+    const related = applyProposals(glossary, { ...doc, proposals: [{ ...doc.proposals[0], id: "comp", source: "comp" }] });
+    assert.equal(related.skipped.length, 1);
+    const card = { schemaVersion: "0", locale: "de", entries: [{ ...glossary.entries[0], source: "car", practitionerTerm: "Auto", relatedTerms: [], rejected: [] }] };
+    const r2 = applyProposals(card, { ...doc, proposals: [{ id: "card", source: "card", practitionerTerm: "Karte", decision: "approve", reject: [] }] });
+    assert.deepEqual(r2.approved, ["card"]);
+  });
+
+  it("reports approvals it skipped instead of claiming nothing happened", async () => {
+    const out = tmp();
+    const h = summary(await council([...HARVEST, "--out", out, "--json"]));
+    decide(h.artifacts.proposals, { layer: { decision: "approve", source: "Compositions" } });
+    const s = summary(await council(["glossary", "apply", "--proposals", h.artifacts.proposals, "--glossary", join(G, "glossary.de.json"), "--json"]));
+    assert.equal(s.status, "proposals");
+    assert.deepEqual(s.skipped.map((x) => x.source), ["Compositions"]);
+    assert.equal(s.warnings[0].code, "approval_skipped");
+    assert.equal(s.artifacts.affectedKeys, null, "nothing approved, so no affected-keys.json");
+    assert.equal(existsSync(join(out, "affected-keys.json")), false);
   });
 
   it("mergeDecisions matches a term across spellings", () => {

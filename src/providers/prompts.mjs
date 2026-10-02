@@ -10,7 +10,7 @@ export const PROMPT_VERSION = {
   backtranslate: 1,
   judge: 1,
   compare: 1,
-  terms: 1,
+  terms: 2,
 };
 
 /**
@@ -25,7 +25,7 @@ const TERMS_RULES =
   "English term in its base form, lowercase unless it is a proper noun), `target` (the text the translation uses " +
   "for it, copied verbatim, inflection included; if the translation keeps the English word, copy that), `base` " +
   "(the dictionary form of target in the locale) and `productMeaning` (what the term means in this product, in a " +
-  "few words). Return an empty list when the string has no such terms.";
+  "few words). Leave out a term the translation doesn't render. Return an empty list when the string has no such terms.";
 
 export function termsPrompt({ locale, source, candidate }) {
   return {

@@ -33,12 +33,17 @@ glossary ─┤ deterministic rejected-term check each use the      │
 - **Post-escalate and tidy.** Faceoff candidates, consensus-cull rows and blind-audit votes go
   through the same checks, and `council tidy` re-audits shipped strings against today's glossary.
 
-**Only the entries a string uses reach the provider.** An entry applies when its `source` term
-appears in the English string as a whole word. Matching ignores case and treats hyphen, space and no
-space the same ("pre-compose", "pre compose", "precompose"). It also accepts common English
-inflections of the last word ("layers", "skinning", "composing"). This keeps prompts short as the
-glossary grows. The result cache keys on the entries each string uses, so adding or editing an
-entry re-runs only the strings that contain its term, and bumping `version` alone re-runs nothing.
+**Only the entries a string uses reach the provider.** An entry applies when its `source` term, or
+one of its `relatedTerms`, appears in the English string as a whole word. Matching ignores case and
+treats hyphen, space and no space the same in either direction ("pre-compose", "pre compose",
+"precompose"). It also accepts common English inflections of the last word ("layers", "skinning",
+"composing"). Short words get few inflections: a two-letter term like "US" matches only itself, and a
+three-letter term only its plural, so "car" never matches "card". The deterministic rejected-term
+check uses the entry's own `source` term, not its related terms.
+
+This keeps prompts short as the glossary grows. The result cache keys on the entries each string
+uses. Adding or editing an entry re-runs only the strings that contain its term, a glossary with no
+entry for a string caches like no glossary at all, and bumping `version` alone re-runs nothing.
 
 ## How it grows
 
@@ -84,6 +89,10 @@ Artifacts under `--out`:
 
 Harvest results are cached per string, so a nightly harvest only pays for strings that changed.
 Re-harvesting into the same `--out` keeps a person's decisions and edits and refreshes the evidence.
+A proposal a person decided or edited is never dropped. If a narrower harvest (`--keys-file`,
+`--limit`) doesn't propose it again, it stays in the file marked `"stale": true` until apply puts it
+in the glossary. If `glossary-proposals.json` exists but isn't valid JSON, harvest stops with exit
+`2` rather than overwrite it.
 
 ### 2. A person decides
 
@@ -129,8 +138,15 @@ Approved terms become entries with `approved: true`, the rejected renderings, an
 `origin: { via: "harvest", keys }`. Declined terms go into `declined`. A term someone already added
 by hand is skipped. If `--glossary` doesn't exist yet, apply starts a new glossary, so a locale can
 start growing one from nothing. Contradictory decisions are a usage error (exit `2`), and nothing
-is written. That includes rejecting the approved term, an unknown `decision`, and approving with an
-empty `practitionerTerm`. Apply exits `10` while undecided proposals remain.
+is written:
+- rejecting a term contained in the approved one (rejected terms match anywhere inside a translation,
+  so rejecting "Komposition" next to an approved "Vorkomposition" would flag every string that uses it)
+- an unknown `decision`
+- approving with an empty `practitionerTerm`
+
+Approvals that were skipped are listed in `skipped` with a warning. Apply exits `10` while
+proposals remain that aren't in the glossary yet. With `--write` it keeps the glossary's indentation
+and one-line arrays, so the diff is the new entries.
 
 Commit the updated glossary to the product repo like any other change.
 

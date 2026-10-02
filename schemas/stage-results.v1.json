@@ -70,8 +70,8 @@
             "type": "object",
             "required": ["source", "target", "base", "productMeaning"],
             "properties": {
-              "source": { "type": "string", "minLength": 1 },
-              "target": { "type": "string", "minLength": 1 },
+              "source": { "type": "string" },
+              "target": { "type": "string" },
               "base": { "type": "string" },
               "productMeaning": { "type": "string" }
             }

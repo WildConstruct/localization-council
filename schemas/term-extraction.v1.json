@@ -14,8 +14,8 @@
         "additionalProperties": false,
         "required": ["source", "target", "base", "productMeaning"],
         "properties": {
-          "source": { "type": "string", "minLength": 1, "description": "The English term in its base form" },
-          "target": { "type": "string", "minLength": 1, "description": "The text the translation uses for it, copied verbatim" },
+          "source": { "type": "string", "description": "The English term in its base form" },
+          "target": { "type": "string", "description": "The text the translation uses for it, copied verbatim. An empty term is set aside, not an error" },
           "base": { "type": "string", "description": "Dictionary form of target in the locale" },
           "productMeaning": { "type": "string", "description": "What the term means in this product, in a few words" }
         }

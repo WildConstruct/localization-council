@@ -109,12 +109,26 @@ describe("term matching", () => {
       ["New compositions", "composition"],
       ["Copies", "copy"],
       ["Rendering…", "render"],
+      // Separators don't matter in either direction.
+      ["Pre-compose layers", "precompose"],
+      ["Onion skin", "onionskin"],
+      ["E-mail address", "email"],
+      ["Brushes", "brush"],
     ];
     const no = [
       ["Decomposition", "composition"],
       ["Player", "layer"],
       ["Renderer", "render"],
       ["Comp settings", "composition"],
+      // Short words get few inflections: no "ad" in "Add", no "car" in "Card", no "IT" in "its".
+      ["Add layer", "ad"],
+      ["Used by", "US"],
+      ["Uses", "US"],
+      ["Save its state", "IT"],
+      ["Game modes", "mod"],
+      ["Bind", "bin"],
+      ["Card details", "car"],
+      ["Open Settings", "set"],
     ];
     for (const [text, term] of yes) assert.ok(sourceHasTerm(text, term), `${term} in ${text}`);
     for (const [text, term] of no) assert.ok(!sourceHasTerm(text, term), `${term} not in ${text}`);
@@ -124,6 +138,9 @@ describe("term matching", () => {
     assert.ok(sameTerm("Layers", "layer"));
     assert.ok(sameTerm("precompose", "Pre-compose"));
     assert.ok(!sameTerm("render queue", "render"));
+    assert.ok(!sameTerm("car", "card"));
+    assert.ok(!sameTerm("set", "setting"));
+    assert.ok(!sameTerm("ad", "add"));
   });
 
   it("the rejected-term check no longer fires inside a longer word", () => {
@@ -144,6 +161,13 @@ describe("glossarySlice", () => {
     assert.equal("declined" in s, false);
     assert.equal("version" in s, false);
     assert.equal(glossarySlice(null, ["x"]), null);
+  });
+
+  it("an entry also applies where one of its related terms appears", () => {
+    assert.deepEqual(glossarySlice(TOY_GLOSSARY, ["Show ghost frames"]).entries.map((e) => e.source), ["onion skin"]);
+    assert.deepEqual(glossarySlice(TOY_GLOSSARY, ["Pre-comp selected layers"]).entries.map((e) => e.source), ["composition", "pre-compose"]);
+    // The deterministic rejected-term check stays on the entry's own term.
+    assert.equal(findRejectedTerms("Show ghost frames", "Zwiebelschale zeigen", TOY_GLOSSARY).length, 0);
   });
 });
 

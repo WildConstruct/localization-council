@@ -31,7 +31,7 @@ import {
   parseJudgeJson,
   parseCompareJson,
 } from "./judge-schema.mjs";
-import { comparePrompt, termsPrompt } from "./prompts.mjs";
+import { comparePrompt, termsPrompt, PROMPT_VERSION } from "./prompts.mjs";
 import { TERMS_OUTPUT_SCHEMA, parseTermsJson } from "./terms-schema.mjs";
 import { glossaryPromptBlock } from "../glossary.mjs";
 
@@ -228,7 +228,7 @@ export function createCodexAdapter(opts = {}) {
         provider: PROVIDER_ID,
         model: codexModel(stage, opts.models) || "cli-default",
         family: "openai",
-        promptVersion: `cli-codex/${stage}@1`,
+        promptVersion: `cli-codex/${stage}@${stage === "terms" ? PROMPT_VERSION.terms : 1}`,
       };
     },
     batchSize() {
