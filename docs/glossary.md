@@ -227,10 +227,14 @@ The inventory is the garden's terminology in one table:
 | `product_meaning`, `swept_at` | What it means in this app, and when the sweep ran |
 
 The council only writes files. It never connects to a database or a workspace and needs no
-credentials for this, so the team picks the store:
+credentials for this, so the team picks the store. Wherever it goes, it stays with the team: never
+commit a product's glossary, proposals or inventory to localization-council or open a pull request
+with them. If you run the council from a clone of this repo, write to `scores/` (the default) or
+`local/`, which git ignores. Harvest, apply and the sweep warn (`inside_council_checkout`) when the
+output path is anywhere else in the clone.
 
-- **A repo you own.** Point `--out` at a clone of a private repo (for example `your-org/terminology`)
-  and commit after each sweep. The inventory, every catalog's proposals, and the decisions people
+- **A repo you own.** Point `--out` at a clone of your own private repo (for example
+  `your-org/terminology`), not at this one, and commit after each sweep. The inventory, every catalog's proposals, and the decisions people
   make in them are then versioned together. This is the simplest choice, and the decisions are
   safest there. (`scores/` in this repo is never committed.)
 - **SQLite on your machine.** Run `sqlite3 terms.db < inventory.sql`. The file creates the
@@ -262,6 +266,8 @@ go through `glossary-proposals.json` and `council glossary apply`.
   escalations pass ([AGENTS.md](../AGENTS.md)).
 - Nothing is enforced until it's in the glossary. Proposals are suggestions with evidence.
 - `declined` terms never reach a provider. They only stop repeat proposals.
+- A product's glossary, proposals and inventory stay with the team that owns the product, never in
+  this repository. The only glossaries here are the synthetic examples under `fixtures/`.
 
 ## Try it offline
 

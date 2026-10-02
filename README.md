@@ -139,7 +139,7 @@ node src/cli.mjs glossary harvest --profile=mock --catalog fixtures/glossary-gro
   --glossary fixtures/glossary-growth/glossary.de.json --out scores/de-glossary
 ```
 
-With several apps, `council garden --mode glossary` sweeps them all. A term one app already approved pre-fills the proposal in another, and gets proposed there as soon as that app's English uses it. The term carries over; what it means stays each app's call. The sweep also writes a term inventory (JSON, CSV, and SQL upserts) for a store your team owns: a repo, SQLite, Postgres such as Neon, or Notion.
+With several apps, `council garden --mode glossary` sweeps them all. A term one app already approved pre-fills the proposal in another, and gets proposed there as soon as that app's English uses it. The term carries over; what it means stays each app's call. The sweep also writes a term inventory (JSON, CSV, and SQL upserts) for a store your team owns: a repo, SQLite, Postgres such as Neon, or Notion. Your glossary and inventory stay with you; never commit them to this repository (`.gitignore` and a CI check keep them out, and `local/` is ignored if you keep them in your clone).
 
 Adding `--faceoff --consensus-cull --blind-audit` makes the council try other providers for escalated rows, and in the mock demo it accepts "Onion Skin" once two independent candidates agree and pass every check.
 

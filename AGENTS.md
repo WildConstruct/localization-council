@@ -18,6 +18,10 @@ Council on a product's catalogs or **work on** this repository. `CLAUDE.md` poin
 6. **The glossary belongs to the product.** Harvest proposals and hand them to a person. Never fill
    in a proposal's `decision`, never run `council glossary apply --write`, and never edit a glossary
    file yourself.
+7. **Keep a product's data out of this repository.** Never commit or open a pull request to
+   localization-council with a product's glossary, catalogs, proposals, term inventory, or run output.
+   Write output to the product's repo, the team's own store, or `scores/` or `local/` (both ignored).
+   A summary warning `inside_council_checkout` means the output path is somewhere it could be committed.
 
 ## Running the council
 

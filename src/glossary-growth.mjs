@@ -19,7 +19,7 @@ import { existsSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import { loadCatalog } from "./catalog.mjs";
 import { loadGlossary, validateGlossary, sourceHasTerm, sameTerm, keysUsingTerm, termIndex } from "./glossary.mjs";
-import { loadModelsConfig, applyModelSelection, councilVersion, expandStageSpec } from "./config.mjs";
+import { loadModelsConfig, applyModelSelection, councilVersion, expandStageSpec, councilCheckoutWarning } from "./config.mjs";
 import { resolveRunProviders, createAdapter, supportedStages, isKnownProvider } from "./providers/resolve.mjs";
 import { normalizeCandidateText } from "./providers/contract.mjs";
 import { runStage } from "./pipeline/stage.mjs";
@@ -577,6 +577,8 @@ export async function runGlossaryHarvest(opts) {
   const allow = opts.keysFile ? new Set(parseKeysFile(await readFile(opts.keysFile, "utf8"))) : null;
 
   const outDir = resolve(opts.out || `./scores/${opts.locale}-glossary`);
+  const placement = councilCheckoutWarning(outDir, "--out");
+  if (placement) warnings.push(placement);
   await mkdir(outDir, { recursive: true });
   const tools = await toolVersions(new Set([extractorId]), models);
   const providerSalt = Object.fromEntries(
@@ -786,6 +788,9 @@ export async function runGlossaryApply(opts) {
   }
 
   const warnings = [];
+  for (const w of [councilCheckoutWarning(outDir, "--out"), changed ? councilCheckoutWarning(nextPath, "The glossary") : null]) {
+    if (w && !warnings.some((x) => x.code === w.code)) warnings.push(w);
+  }
   const skippedApprovals = r.skipped.filter((x) => x.decision === "approve");
   if (skippedApprovals.length) {
     warnings.push({

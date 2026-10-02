@@ -23,7 +23,7 @@ import { inventoryRows, inventoryCsv, inventorySql, crossAppConflicts } from "./
 import { createAdapter } from "./providers/resolve.mjs";
 import { createRunContext } from "./run-context.mjs";
 import { toolVersions } from "./doctor.mjs";
-import { councilVersion } from "./config.mjs";
+import { councilVersion, councilCheckoutWarning } from "./config.mjs";
 import { envelope, EXIT, UsageError } from "./summary.mjs";
 import { numberOption } from "./options.mjs";
 
@@ -142,6 +142,8 @@ export async function runGardenGlossary(opts) {
   const { models, run, extractorId, preset, stageModels, warnings } = resolveExtractor(opts);
   const minKeys = numberOption(opts.minKeys, "--min-keys", DEFAULT_MIN_KEYS, { min: 1, integer: true });
   const outDir = resolve(opts.out || "./scores/garden-glossary");
+  const placement = councilCheckoutWarning(outDir, "--out");
+  if (placement) warnings.push(placement);
   await mkdir(outDir, { recursive: true });
 
   const rows = await resolveRows(data, rootAbs);

@@ -207,3 +207,15 @@ describe("glossary locale vs run locale (S12)", () => {
     );
   });
 });
+
+describe("output placement", () => {
+  it("warns when output would sit in this checkout outside scores/ and local/", async () => {
+    const { councilCheckoutWarning } = await import("../src/config.mjs");
+    const root = new URL("..", import.meta.url).pathname;
+    assert.equal(councilCheckoutWarning(`${root}scores/de-glossary`, "--out"), null);
+    assert.equal(councilCheckoutWarning(`${root}local/terms`, "--out"), null);
+    assert.equal(councilCheckoutWarning("/somewhere/else", "--out"), null);
+    assert.equal(councilCheckoutWarning(`${root}terminology`, "--out").code, "inside_council_checkout");
+    assert.equal(councilCheckoutWarning(`${root}fixtures/toy/glossary.de.json`, "The glossary").code, "inside_council_checkout");
+  });
+});

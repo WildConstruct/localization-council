@@ -49,7 +49,12 @@ the OpenRouter fixtures. Review that diff before committing.
 
 - Keep them focused. Describe the behavior change and how you tested it.
 - `npm test` must pass.
-- Glossary or fixture changes: explain the terminology choice in the entry's `why`.
+- Glossary or fixture changes: explain the terminology choice in the entry's `why`. Example glossaries
+  under `fixtures/` are synthetic and describe a made-up product.
+- Never include your product's glossary, catalogs, or council output (proposals, the term inventory,
+  run artifacts). They belong in your own repo or store. `.gitignore` keeps them out by default,
+  `local/` is ignored if you want them inside your clone, and `test/repo-hygiene.test.mjs` fails a
+  pull request that adds them anyway.
 
 ## Good first issues
 

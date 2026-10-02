@@ -7,3 +7,16 @@ scores/*
 *.log
 .DS_Store
 tmp/
+
+# Your product's data stays out of this repository. Keep glossaries, catalogs and council output in
+# the product's repo or your own store. local/ is ignored, for keeping them inside a clone of this repo.
+local/
+*glossary*.json
+!fixtures/**/*glossary*.json
+!test/**/*glossary*.json
+!schemas/*glossary*.json
+glossary-proposals.json
+affected-keys.json
+inventory.json
+inventory.csv
+inventory.sql
