@@ -18,7 +18,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import { loadCatalog } from "./catalog.mjs";
-import { loadGlossary, validateGlossary, sourceHasTerm, sameTerm, keysUsingTerm } from "./glossary.mjs";
+import { loadGlossary, validateGlossary, sourceHasTerm, sameTerm, keysUsingTerm, termIndex } from "./glossary.mjs";
 import { loadModelsConfig, applyModelSelection, councilVersion, expandStageSpec } from "./config.mjs";
 import { resolveRunProviders, createAdapter, supportedStages, isKnownProvider } from "./providers/resolve.mjs";
 import { normalizeCandidateText } from "./providers/contract.mjs";
@@ -105,7 +105,7 @@ export function groupTerms({ observations, glossary = null, enMap = {}, minKeys 
         .sort((a, b) => b.keys.length - a.keys.length || a.term.localeCompare(b.term));
       // A term is covered when it is an entry's source or one of its related terms.
       const entry = glossaryEntryFor(glossary, g.spellings);
-      const declined = glossary?.declined?.find((d) => g.spellings.some((s) => sameTerm(s, d.source)));
+      const declined = g.spellings.some((s) => isDeclined(glossary, s));
       let status = "proposed";
       if (entry) status = "in_glossary";
       else if (declined) status = "declined";
@@ -125,28 +125,117 @@ export function groupTerms({ observations, glossary = null, enMap = {}, minKeys 
     .sort((a, b) => b.keys.length - a.keys.length || a.source.localeCompare(b.source));
 }
 
+const entryIndexes = new WeakMap();
+
 /** The glossary entry a term belongs to: same source term, or one of the entry's related terms. */
 export function glossaryEntryFor(glossary, spellings) {
-  return glossary?.entries?.find((e) =>
-    [e.source, ...(e.relatedTerms ?? [])].some((t) => spellings.some((s) => sameTerm(s, t))),
-  );
+  const entries = glossary?.entries;
+  if (!entries?.length) return undefined;
+  let cached = entryIndexes.get(entries);
+  if (!cached || cached.length !== entries.length) {
+    cached = { length: entries.length, index: termIndex(entries, (e) => [e.source, ...(e.relatedTerms ?? [])]) };
+    entryIndexes.set(entries, cached);
+  }
+  for (const s of spellings) {
+    const hit = cached.index.find(s);
+    if (hit) return hit;
+  }
+  return undefined;
 }
 
-/** A fresh proposal for a term: what a person edits and decides first, then the evidence. */
-function toProposal(t) {
-  const suggested = { source: t.source, practitionerTerm: t.renderings[0]?.term ?? "", productMeaning: t.productMeaning, reject: [] };
+/** Whether a glossary's declined list has the term. */
+function isDeclined(glossary, term) {
+  return Boolean(glossary?.declined?.length && termIndex(glossary.declined, (d) => [d.source]).find(term));
+}
+
+/**
+ * Approved entries other apps' glossaries have for a term (same source term or a related term).
+ * @param {string[]} spellings
+ * @param {{ name: string, glossary: object }[]} references
+ */
+export function referencesFor(spellings, references) {
+  const out = [];
+  for (const ref of references ?? []) {
+    const e = glossaryEntryFor(ref.glossary, spellings);
+    if (e?.approved) {
+      out.push({ app: ref.name, source: e.source, practitionerTerm: e.practitionerTerm, productMeaning: e.productMeaning, rejected: e.rejected });
+    }
+  }
+  return out;
+}
+
+/** Whether this app's renderings match what other apps approved: agrees | differs | not_shipped. */
+function crossAppAgreement(renderings, refs) {
+  if (!renderings.length) return "not_shipped";
+  const approved = new Set(refs.map((r) => fold(r.practitionerTerm)));
+  return renderings.every((r) => approved.has(fold(r.term))) ? "agrees" : "differs";
+}
+
+/**
+ * A fresh proposal for a term: what a person edits and decides first, then the evidence. When
+ * another app already approved the term, its practitioner term and rejected terms are the
+ * suggestion. Its meaning isn't: the same term can mean something else in this app, so the person
+ * writes that (this app's extracted meaning, if any, is the starting point).
+ */
+function toProposal(t, refs = [], kind = "harvest") {
+  const ref = refs[0];
+  const practitionerTerm = ref?.practitionerTerm ?? t.renderings[0]?.term ?? "";
+  const reject = (ref?.rejected ?? [])
+    .filter((r) => r.term && !fold(practitionerTerm).includes(fold(r.term)))
+    .map((r) => ({ term: r.term, why: `${r.why} (rejected in ${ref.app})` }));
+  const suggested = { source: t.source, practitionerTerm, productMeaning: t.productMeaning, reject };
   return {
     id: t.id,
+    kind,
     ...suggested,
     decision: null,
-    reject: [],
     why: "",
     suggested,
+    ...(refs.length ? { reference: refs, crossApp: crossAppAgreement(t.renderings, refs) } : {}),
     consistent: t.consistent,
     renderings: t.renderings,
     keys: t.keys,
     affectedKeys: t.affectedKeys,
   };
+}
+
+/**
+ * Terms another app approved that this app's English uses but that have no entry, decline or
+ * harvest proposal here. They become `carry_over` proposals even when nothing has shipped yet, or
+ * when this app uses them in fewer than --min-keys keys: the other app's decision is the evidence.
+ * @param {{ references: object[], glossary: object|null, terms: object[], enMap: Record<string,string> }} o
+ */
+export function carryOverTerms({ references, glossary, terms, enMap }) {
+  const out = [];
+  const chosen = termIndex([], (o) => [o.source]);
+  const declined = termIndex(glossary?.declined ?? [], (d) => [d.source]);
+  const seenTerms = termIndex(terms, (t) => [t.source]);
+  for (const ref of references ?? []) {
+    for (const e of ref.glossary?.entries ?? []) {
+      if (!e.approved || chosen.find(e.source)) continue;
+      if (glossaryEntryFor(glossary, [e.source]) || declined.find(e.source)) continue;
+      const seen = seenTerms.find(e.source);
+      if (seen && seen.status !== "below_min_keys") continue;
+      const affectedKeys = seen?.affectedKeys ?? keysUsingTerm(enMap, [e.source]);
+      if (!affectedKeys.length) continue;
+      chosen.add({ source: e.source });
+      out.push(
+        seen
+          ? { ...seen, status: "carry_over" }
+          : {
+              id: e.source.toLowerCase(),
+              source: e.source,
+              status: "carry_over",
+              keys: [],
+              affectedKeys,
+              renderings: [],
+              consistent: true,
+              productMeaning: "",
+            },
+      );
+    }
+  }
+  return out;
 }
 
 const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -192,21 +281,43 @@ function renderProposalsMd({ locale, proposals, counts, proposalsPath, glossaryP
   if (!proposals.length) {
     lines.push("Every recurring term in the shipped strings is already in the glossary (or was declined). Nothing to decide.", "");
   } else {
+    const carry = proposals.filter((p) => p.kind === "carry_over").length;
     lines.push(
-      `${proposals.length} recurring term(s) appear in shipped strings without a glossary entry. Nothing is enforced until a person approves it.`,
+      `${proposals.length} term(s) have no glossary entry yet` +
+        (carry ? `, ${carry} of them approved in another app` : "") +
+        ". Nothing is enforced until a person approves it.",
       "",
     );
     for (const p of proposals) {
+      const seen = p.keys.length ? `${p.keys.length} key${p.keys.length === 1 ? "" : "s"}` : "not in shipped strings yet";
+      const notes = [seen, p.consistent ? null : "renderings disagree", p.kind === "carry_over" ? "approved in another app" : null, p.stale ? "stale" : null];
+      lines.push(`## ${p.source} (${notes.filter(Boolean).join(", ")})`, "");
       lines.push(
-        `## ${p.source} (${p.keys.length} key${p.keys.length === 1 ? "" : "s"}${p.consistent ? "" : ", renderings disagree"})`,
-        "",
         `Suggested: **${p.practitionerTerm}**${p.productMeaning ? ` (${p.productMeaning})` : ""}${p.decision ? ` · decision so far: \`${p.decision}\`` : ""}`,
         "",
-        "| Rendering | Forms | Keys |",
-        "|-----------|-------|------|",
-        ...p.renderings.map((r) => `| ${r.term} | ${r.forms.join(", ")} | ${r.keys.map((k) => `\`${k}\``).join(", ")} |`),
-        "",
       );
+      for (const r of p.reference ?? []) {
+        const rejects = r.rejected?.length ? `; rejects ${r.rejected.map((x) => `"${x.term}"`).join(", ")}` : "";
+        lines.push(`- In \`${r.app}\`: **${r.practitionerTerm}**${r.productMeaning ? `, meaning "${r.productMeaning}"` : ""}${rejects}`);
+      }
+      if (p.reference?.length) {
+        lines.push(
+          p.crossApp === "differs"
+            ? "- This app's shipped strings use a different rendering. Check whether the term means the same thing here."
+            : "- Write what the term means in this app: the other app's meaning may not fit.",
+          "",
+        );
+      }
+      if (p.renderings.length) {
+        lines.push(
+          "| Rendering | Forms | Keys |",
+          "|-----------|-------|------|",
+          ...p.renderings.map((r) => `| ${r.term} | ${r.forms.join(", ")} | ${r.keys.map((k) => `\`${k}\``).join(", ")} |`),
+          "",
+        );
+      } else if (p.affectedKeys.length) {
+        lines.push(`Used in the English of: ${p.affectedKeys.slice(0, 8).map((k) => `\`${k}\``).join(", ")}${p.affectedKeys.length > 8 ? ", …" : ""}`, "");
+      }
     }
   }
   lines.push(
@@ -248,20 +359,14 @@ async function readPreviousProposals(path) {
 }
 
 /**
- * `council glossary harvest`.
- * @param {object} opts - see `council help`
+ * Pick the term extractor: --extractor, else the profile's judge (an analytic model), else its
+ * translator when the judge can't extract terms (api:jev).
  */
-export async function runGlossaryHarvest(opts) {
-  const startedAt = new Date();
-  for (const f of ["catalog", "localeFile", "locale"]) {
-    if (!opts[f]) throw new UsageError(`glossary harvest requires --${f === "localeFile" ? "locale-file" : f}`);
-  }
+export function resolveExtractor(opts) {
   const stageModels = Object.fromEntries(Object.entries(opts.stageModels || {}).filter(([, v]) => v != null));
   let preset = opts.preset || null;
   const models = applyModelSelection(loadModelsConfig({ modelsFile: opts.modelsFile }), { preset, stageModels });
   const run = resolveRunProviders({ mock: opts.mock, provider: opts.provider, profile: opts.profile, models });
-  // The extractor defaults to the profile's judge (an analytic model), or its translator when the
-  // judge can't extract terms (api:jev).
   let extractorId;
   if (opts.extractor) {
     extractorId = expandStageSpec(opts.extractor, "judge", models);
@@ -284,6 +389,171 @@ export async function runGlossaryHarvest(opts) {
       message: "No profile given, so terms came from the offline mock extractor. Use --profile fleet or openrouter for real catalogs.",
     });
   }
+  return { models, run, extractorId, preset, stageModels, warnings };
+}
+
+/** Shipped pairs worth extracting from: translated (not identical to the English) and non-empty. */
+function shippedPairs(enMap, localeMap, { allow = null, limit = null } = {}) {
+  let skippedIdentical = 0;
+  let pairs = Object.keys(enMap)
+    .filter((k) => (!allow || allow.has(k)) && typeof localeMap[k] === "string" && localeMap[k].trim() && String(enMap[k]).trim())
+    .sort()
+    .filter((k) => {
+      // A string identical to its source may be untranslated: it is no evidence of a rendering.
+      if (normalizeCandidateText(localeMap[k]) !== normalizeCandidateText(enMap[k])) return true;
+      skippedIdentical += 1;
+      return false;
+    })
+    .map((k) => ({ key: k, source: String(enMap[k]), candidate: String(localeMap[k]) }));
+  if (Number.isFinite(limit)) pairs = pairs.slice(0, limit);
+  return { pairs, skippedIdentical };
+}
+
+/**
+ * Harvest one catalog: extract and verify terms, group them, add carry-over terms from other apps'
+ * glossaries, merge a person's earlier decisions, and write terms.json, glossary-proposals.json
+ * and PROPOSALS.md under outDir. Used by `council glossary harvest` and `council garden --mode glossary`.
+ * @returns {Promise<object>} { pairs, terms, carryOver, proposals, unverified, counts, glossaryRef, artifacts }
+ */
+export async function harvestCatalog({
+  enMap,
+  localeMap,
+  locale,
+  glossary = null,
+  glossaryPath = null,
+  references = [],
+  adapter,
+  extractorId,
+  ctx,
+  outDir,
+  minKeys = DEFAULT_MIN_KEYS,
+  allow = null,
+  limit = null,
+  acceptedCount = 0,
+}) {
+  const proposalsPath = join(outDir, "glossary-proposals.json");
+  const previous = await readPreviousProposals(proposalsPath); // before any provider call: a broken file fails fast
+  const { pairs, skippedIdentical } = shippedPairs(enMap, localeMap, { allow, limit });
+  const rows = await runStage({ stage: "terms", adapter, locale, items: pairs, ctx });
+  const { observations, unverified } = verifyTerms(rows);
+  const terms = groupTerms({ observations, glossary, enMap, minKeys });
+  const carryOver = carryOverTerms({ references, glossary, terms, enMap });
+
+  const fresh = [
+    ...terms.filter((t) => t.status === "proposed").map((t) => toProposal(t, referencesFor([t.source], references))),
+    ...carryOver.map((t) => toProposal(t, referencesFor([t.source], references), "carry_over")),
+  ];
+  const { proposals: merged, kept, stale } = mergeDecisions(fresh, previous);
+  // A stale proposal whose term has since reached the glossary (or its declined list) is done.
+  const open = stale.filter((p) => !glossaryEntryFor(glossary, [p.id, p.source]) && !isDeclined(glossary, p.id));
+  // Terms with disagreeing renderings first (those are the ones a glossary settles), then terms
+  // other apps approved, then anything a person touched that this harvest didn't see again.
+  const order = (p) => (p.kind === "carry_over" ? 2 : p.consistent ? 1 : 0);
+  const proposals = [
+    ...[...merged].sort(
+      (a, b) =>
+        order(a) - order(b) ||
+        b.keys.length - a.keys.length ||
+        b.affectedKeys.length - a.affectedKeys.length ||
+        a.source.localeCompare(b.source),
+    ),
+    ...open,
+  ];
+
+  const counts = {
+    pairs: pairs.length,
+    fromAccepted: acceptedCount,
+    skippedIdentical,
+    terms: terms.length,
+    proposals: proposals.length,
+    carryOver: proposals.filter((p) => p.kind === "carry_over").length,
+    keptDecisions: kept,
+    stale: open.length,
+    inGlossary: terms.filter((t) => t.status === "in_glossary").length,
+    declined: terms.filter((t) => t.status === "declined").length,
+    belowMinKeys: terms.filter((t) => t.status === "below_min_keys").length,
+    unverified: unverified.length,
+    minKeys,
+  };
+  const glossaryRef = glossary
+    ? { path: glossaryPath ? resolve(glossaryPath) : null, version: glossaryVersion(glossary), hash: glossaryHash(glossary), entries: glossary.entries.length }
+    : null;
+  const referenceRefs = references.map((r) => ({ name: r.name, path: r.path ?? null, entries: r.glossary.entries.length }));
+
+  await writeFile(
+    join(outDir, "terms.json"),
+    JSON.stringify(
+      { locale, extractor: extractorId, glossary: glossaryRef, references: referenceRefs, minKeys, terms, carryOver, unverified },
+      null,
+      2,
+    ) + "\n",
+    "utf8",
+  );
+  await writeFile(
+    proposalsPath,
+    JSON.stringify(
+      {
+        schema: PROPOSALS_SCHEMA_ID,
+        locale,
+        glossary: glossaryRef,
+        references: referenceRefs,
+        note:
+          'A person decides each proposal: set "decision" to "approve" or "decline", then run `council glossary apply`. ' +
+          "Agents never fill in decisions. Nothing here is enforced until it is in the glossary.",
+        proposals,
+      },
+      null,
+      2,
+    ) + "\n",
+    "utf8",
+  );
+  const report = join(outDir, "PROPOSALS.md");
+  await writeFile(report, renderProposalsMd({ locale, proposals, counts, proposalsPath, glossaryPath }), "utf8");
+  return {
+    pairs,
+    terms,
+    carryOver,
+    proposals,
+    unverified,
+    counts,
+    glossaryRef,
+    referenceRefs,
+    artifacts: { proposals: proposalsPath, report, terms: join(outDir, "terms.json") },
+  };
+}
+
+/**
+ * Load reference glossaries (other apps' approved terms): comma-separated paths, each optionally
+ * named, e.g. "entropy=../entropy/locales/glossary.de.json". The name defaults to the path.
+ */
+async function loadReferences(spec, locale) {
+  const parts = String(spec ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const refs = [];
+  for (const part of parts) {
+    const named = part.match(/^([\w.@-]+(?:\/[\w.@-]+)?)=(.+)$/);
+    const [name, path] = named ? [named[1], named[2]] : [part, part];
+    const glossary = await loadGlossary(path);
+    if (glossary.locale !== locale && process.env.GLOSSARY_LOCALE_OVERRIDE !== "1") {
+      throw new UsageError(`Reference glossary ${path} is for "${glossary.locale}", not "${locale}"`);
+    }
+    refs.push({ name, path: resolve(path), glossary });
+  }
+  return refs;
+}
+
+/**
+ * `council glossary harvest`.
+ * @param {object} opts - see `council help`
+ */
+export async function runGlossaryHarvest(opts) {
+  const startedAt = new Date();
+  for (const f of ["catalog", "localeFile", "locale"]) {
+    if (!opts[f]) throw new UsageError(`glossary harvest requires --${f === "localeFile" ? "locale-file" : f}`);
+  }
+  const { models, run, extractorId, preset, stageModels, warnings } = resolveExtractor(opts);
   const minKeys = numberOption(opts.minKeys, "--min-keys", DEFAULT_MIN_KEYS, { min: 1, integer: true });
   const limit = numberOption(opts.limit, "--limit", null, { min: 0, integer: true });
 
@@ -303,20 +573,8 @@ export async function runGlossaryHarvest(opts) {
       `Glossary locale "${glossary.locale}" does not match --locale "${opts.locale}". Set GLOSSARY_LOCALE_OVERRIDE=1 to override.`,
     );
   }
+  const references = await loadReferences(opts.references, opts.locale);
   const allow = opts.keysFile ? new Set(parseKeysFile(await readFile(opts.keysFile, "utf8"))) : null;
-
-  let skippedIdentical = 0;
-  let pairs = Object.keys(enMap)
-    .filter((k) => (!allow || allow.has(k)) && typeof localeMap[k] === "string" && localeMap[k].trim() && String(enMap[k]).trim())
-    .sort()
-    .filter((k) => {
-      // A string identical to its source may be untranslated: it is no evidence of a rendering.
-      if (normalizeCandidateText(localeMap[k]) !== normalizeCandidateText(enMap[k])) return true;
-      skippedIdentical += 1;
-      return false;
-    })
-    .map((k) => ({ key: k, source: String(enMap[k]), candidate: String(localeMap[k]) }));
-  if (Number.isFinite(limit)) pairs = pairs.slice(0, limit);
 
   const outDir = resolve(opts.out || `./scores/${opts.locale}-glossary`);
   await mkdir(outDir, { recursive: true });
@@ -327,79 +585,34 @@ export async function runGlossaryHarvest(opts) {
   const ctx = await createRunContext({ outDir, cacheDir: opts.cacheDir, cache: opts.cache !== false, providerSalt });
   const adapter = createAdapter(extractorId, { models, fetchImpl: opts.fetchImpl });
 
-  let rows;
+  let h;
   try {
-    rows = await runStage({ stage: "terms", adapter, locale: opts.locale, items: pairs, ctx });
+    h = await harvestCatalog({
+      enMap,
+      localeMap,
+      locale: opts.locale,
+      glossary,
+      glossaryPath: opts.glossary,
+      references,
+      adapter,
+      extractorId,
+      ctx,
+      outDir,
+      minKeys,
+      allow,
+      limit,
+      acceptedCount,
+    });
   } finally {
     await ctx.settle();
   }
-  const { observations, unverified } = verifyTerms(rows);
-  const terms = groupTerms({ observations, glossary, enMap, minKeys });
-
-  const proposalsPath = join(outDir, "glossary-proposals.json");
-  const previous = await readPreviousProposals(proposalsPath);
-  const fresh = terms.filter((t) => t.status === "proposed").map(toProposal);
-  const { proposals: merged, kept, stale } = mergeDecisions(fresh, previous);
-  // A stale proposal whose term has since reached the glossary (or its declined list) is done.
-  const open = stale.filter((p) => !glossaryEntryFor(glossary, [p.id, p.source]) && !glossary?.declined?.some((d) => sameTerm(d.source, p.id)));
-  // Terms with disagreeing renderings first: those are the ones a glossary settles.
-  const proposals = [
-    ...[...merged].sort(
-      (a, b) => Number(a.consistent) - Number(b.consistent) || b.keys.length - a.keys.length || a.source.localeCompare(b.source),
-    ),
-    ...open,
-  ];
 
   const telemetry = ctx.telemetry.summary();
   const cacheStats = ctx.cache.stats();
-  const counts = {
-    pairs: pairs.length,
-    fromAccepted: acceptedCount,
-    skippedIdentical,
-    terms: terms.length,
-    proposals: proposals.length,
-    keptDecisions: kept,
-    stale: open.length,
-    inGlossary: terms.filter((t) => t.status === "in_glossary").length,
-    declined: terms.filter((t) => t.status === "declined").length,
-    belowMinKeys: terms.filter((t) => t.status === "below_min_keys").length,
-    unverified: unverified.length,
-    minKeys,
-    cacheHits: Object.values(cacheStats.hits).reduce((a, b) => a + b, 0),
-  };
-  const glossaryRef = glossary
-    ? { path: resolve(opts.glossary), version: glossaryVersion(glossary), hash: glossaryHash(glossary), entries: glossary.entries.length }
-    : null;
-
+  const counts = { ...h.counts, cacheHits: Object.values(cacheStats.hits).reduce((a, b) => a + b, 0) };
+  const manifestPath = join(outDir, "manifest.json");
   await writeFile(
-    join(outDir, "terms.json"),
-    JSON.stringify({ locale: opts.locale, extractor: extractorId, glossary: glossaryRef, minKeys, terms, unverified }, null, 2) + "\n",
-    "utf8",
-  );
-  await writeFile(
-    proposalsPath,
-    JSON.stringify(
-      {
-        schema: PROPOSALS_SCHEMA_ID,
-        locale: opts.locale,
-        glossary: glossaryRef,
-        note:
-          'A person decides each proposal: set "decision" to "approve" or "decline", then run `council glossary apply`. ' +
-          "Agents never fill in decisions. Nothing here is enforced until it is in the glossary.",
-        proposals,
-      },
-      null,
-      2,
-    ) + "\n",
-    "utf8",
-  );
-  await writeFile(
-    join(outDir, "PROPOSALS.md"),
-    renderProposalsMd({ locale: opts.locale, proposals, counts, proposalsPath, glossaryPath: opts.glossary }),
-    "utf8",
-  );
-  await writeFile(
-    join(outDir, "manifest.json"),
+    manifestPath,
     JSON.stringify(
       {
         schema: "council.glossary-manifest.v1",
@@ -417,7 +630,8 @@ export async function runGlossaryHarvest(opts) {
         stageModels,
         extractor: extractorId,
         model: adapter.describe("terms").model,
-        glossary: glossaryRef,
+        glossary: h.glossaryRef,
+        references: h.referenceRefs,
         tools,
         thresholds: { minKeys },
         counts,
@@ -431,28 +645,31 @@ export async function runGlossaryHarvest(opts) {
   );
 
   return envelope("glossary", {
-    status: proposals.length ? "proposals" : "clean",
-    exitCode: proposals.length ? EXIT.ATTENTION : EXIT.CLEAN,
+    status: h.proposals.length ? "proposals" : "clean",
+    exitCode: h.proposals.length ? EXIT.ATTENTION : EXIT.CLEAN,
     action: "harvest",
     locale: opts.locale,
     profile: run.profile,
     extractor: extractorId,
     outDir,
-    artifacts: {
-      proposals: proposalsPath,
-      report: join(outDir, "PROPOSALS.md"),
-      terms: join(outDir, "terms.json"),
-      manifest: join(outDir, "manifest.json"),
-    },
+    artifacts: { ...h.artifacts, manifest: manifestPath },
     counts,
-    proposals: proposals.map(summaryRow),
+    proposals: h.proposals.map(summaryRow),
     costUsd: telemetry.costUsd,
     warnings,
   });
 }
 
 function summaryRow(p) {
-  return { source: p.source, practitionerTerm: p.practitionerTerm, keys: p.keys.length, consistent: p.consistent, decision: p.decision ?? null };
+  return {
+    source: p.source,
+    practitionerTerm: p.practitionerTerm,
+    keys: Array.isArray(p.keys) ? p.keys.length : 0,
+    consistent: p.consistent !== false,
+    decision: p.decision ?? null,
+    kind: p.kind === "carry_over" ? "carry_over" : "harvest",
+    from: p.reference?.[0]?.app ?? null,
+  };
 }
 
 /**
@@ -517,7 +734,11 @@ export function applyProposals(glossary, doc) {
       practitionerTerm,
       approved: true,
       rejected,
-      origin: { via: "harvest", keys: Array.isArray(p.keys) ? p.keys.map(String) : [] },
+      origin: {
+        via: p.kind === "carry_over" ? "reference" : "harvest",
+        ...(p.reference?.[0]?.app ? { from: String(p.reference[0].app) } : {}),
+        keys: Array.isArray(p.keys) ? p.keys.map(String) : [],
+      },
     });
     result.approved.push(source);
     for (const k of Array.isArray(p.affectedKeys) ? p.affectedKeys : []) result.affectedKeys.add(String(k));

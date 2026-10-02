@@ -76,14 +76,15 @@ catalogs rarely change on weekends.
 
 ## Optional extras
 
-- **Weekly glossary harvest.** For each active locale with a glossary, run `council glossary harvest
-  --catalog <source> --locale-file <target> --glossary <glossary> --locale <locale> --profile <profile>
-  --out scores/<repo>/<id>/<locale>-glossary --json`. Always use the same `--out`, so a person's
-  decisions carry over. On exit `10`, add one block to the message listing `proposals` (term →
-  suggested rendering, key count, whether renderings disagree) and the `PROPOSALS.md` path. Don't
-  repeat a block the person already saw unless the list changed. Never fill in decisions. Run
-  `council glossary apply` (without `--write`) only when the person asks
-  ([docs/glossary.md](../glossary.md)).
+- **Weekly glossary sweep.** Run `council garden --mode glossary --manifest <file> --root <checkouts>
+  --profile <profile> --out <terminology dir> --json`. Always use the same `--out` (ideally a repo
+  the team owns), so a person's decisions carry over. On exit `10`, add one block to the message:
+  each catalog with proposals (`results[].proposals`, how many came from other apps), the terms
+  two apps approved differently (`counts.conflicts`, listed in `GLOSSARY.md`), and the `GLOSSARY.md`
+  path. Don't repeat a block the person already saw unless it changed. Load `inventory.sql` or
+  `inventory.csv` into the team's database or Notion only if the person set that up. Never fill in
+  decisions. Run `council glossary apply` (without `--write`) only when the person asks
+  ([docs/glossary.md](../glossary.md#sweep-a-garden)).
 
 - **Monthly tidy.** For locales that shipped a while ago, run `council tidy … --bt-file <prior
   backtranslations.json> --json` and report rows where `reopen` is true

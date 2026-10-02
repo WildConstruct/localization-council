@@ -164,6 +164,97 @@ council tidy --catalog <en.json> --locale-file <de.json> --locale de \
 Rows that use a rejected rendering reopen with a glossary reason
 ([retrospective-tidy.md](retrospective-tidy.md)).
 
+## Across apps
+
+When several apps share terms, one app's approved glossary speeds up the next. A term like
+"keyframe" usually translates the same way in both, even when the tooltip around it differs.
+
+```bash
+council glossary harvest … --reference entropy=../entropy/locales/glossary.de.json
+```
+
+A `--reference` glossary (comma-separate several; `name=path` gives it a readable name) is never
+enforced on this app. It only shapes the proposals:
+
+- **Pre-filled proposals.** When this app's shipped strings use a term the other app approved, the
+  proposal suggests the other app's term and its rejected renderings. It lists the other app's
+  entry under `reference`, and `crossApp` says whether this app's strings already agree
+  (`agrees` / `differs`).
+- **Carry-over proposals** (`"kind": "carry_over"`). A term the other app approved that this app's
+  English uses is proposed even if it appears in fewer than `--min-keys` strings, or in none that
+  shipped yet (`not_shipped`). That gives a new app or locale a head start.
+- **Meaning stays per app.** `productMeaning` is never copied: the person writes what the term means
+  in this app, with the other app's meaning shown for comparison. An approved carry-over records
+  `origin: { via: "reference", from: "<app>" }`.
+
+## Sweep a garden
+
+`council garden --mode glossary` runs a harvest for every active catalog in a garden manifest
+([garden.md](garden.md)). Every other catalog's glossary for the same locale serves as a
+reference, so the apps in a garden pre-fill each other's proposals automatically:
+
+```bash
+council garden --mode glossary --manifest garden.json --root ~/checkouts \
+  --profile openrouter --out ~/terminology/garden --json
+```
+
+- Each catalog gets its own proposals folder, `<out>/<owner>/<repo>/<id>/<locale>/`, the same
+  files as a single harvest. A person decides there and applies with `council glossary apply`.
+- A catalog whose target file doesn't exist yet is swept anyway. Nothing has shipped, but terms
+  the other apps approved are proposed as carry-overs.
+- `GLOSSARY.md` lists every catalog with proposals, and terms that two apps approved differently.
+  That can be right when the term means something else in each app, but a person should know.
+- `inventory.json`, `inventory.csv` and `inventory.sql` hold the **term inventory**: one row per
+  term per catalog.
+
+Exit `10` means some catalog has proposals; exit `1` means a catalog couldn't be read (the rest were
+still swept). Sweeping into the same `--out` keeps decisions, and harvests are cached per string, so a
+weekly sweep pays only for strings that changed.
+
+## Keep the term inventory
+
+The inventory is the garden's terminology in one table:
+
+| Column | Meaning |
+|--------|---------|
+| `term`, `locale`, `repo`, `catalog` | The row's key |
+| `status` | `in_glossary`, `proposed`, `carry_over`, `declined` or `below_min_keys` |
+| `glossary_term` | The approved term in this catalog's glossary |
+| `suggested_term`, `decision` | The open proposal and a person's decision on it |
+| `renderings` | How shipped strings render the term, with counts (`Keyframe ×2; Schlüsselbild ×1`) |
+| `keys_seen`, `keys_using` | Strings where the extractor saw the term, and strings whose English contains it |
+| `other_apps`, `cross_app` | Other apps' approved terms, and `only_here` / `agrees` / `differs` / `not_shipped` |
+| `product_meaning`, `swept_at` | What it means in this app, and when the sweep ran |
+
+The council only writes files. It never connects to a database or a workspace and needs no
+credentials for this, so the team picks the store:
+
+- **A repo you own.** Point `--out` at a clone of a private repo (for example `your-org/terminology`)
+  and commit after each sweep. The inventory, every catalog's proposals, and the decisions people
+  make in them are then versioned together. This is the simplest choice, and the decisions are
+  safest there. (`scores/` in this repo is never committed.)
+- **SQLite on your machine.** Run `sqlite3 terms.db < inventory.sql`. The file creates the
+  `council_terms` table and upserts every row, so loading a newer sweep updates it in place.
+- **Postgres, for example Neon.** Run `psql "$DATABASE_URL" -f inventory.sql` with the connection
+  string from the Neon console in the environment, never in a file. The same SQL runs on any
+  Postgres. A row whose `swept_at` is older than the latest sweep is a term that no longer appears.
+  For example:
+
+  ```sql
+  -- terms approved differently across apps
+  SELECT term, locale, repo, glossary_term, other_apps FROM council_terms WHERE cross_app = 'differs' AND glossary_term IS NOT NULL;
+  -- what other apps could give this one
+  SELECT term, suggested_term, other_apps, keys_using FROM council_terms WHERE status = 'carry_over' AND repo = 'your-org/app-b';
+  ```
+
+- **Notion.** Import `inventory.csv` as a database. It's a snapshot: import again after a later
+  sweep, or merge the new CSV into the database. For a store that updates in place, use Postgres or
+  SQLite and keep Notion for the conversation around it.
+
+Whatever the store, the glossary files in each product repo stay the source of truth that the
+council enforces. The inventory is for finding terms and coordinating across apps. Decisions still
+go through `glossary-proposals.json` and `council glossary apply`.
+
 ## Rules
 
 - The council proposes, and a person decides. Harvest never edits the glossary, and agents never
@@ -183,5 +274,17 @@ council glossary harvest --catalog fixtures/glossary-growth/en.json \
 The fixture proposes *keyframe* (whose renderings disagree: Keyframe vs. Schlüsselbild), *layer* and
 *render queue*. It skips *composition* and *onion skin* (already in the glossary) and *viewport*
 (declined).
+
+Across two apps:
+
+```bash
+council garden --mode glossary --manifest fixtures/garden-glossary/garden.json \
+  --root fixtures/garden-glossary/checkouts --profile=mock --out scores/garden-glossary
+```
+
+App A (the established app) pre-fills app B's *keyframe* proposal with Keyframe and rejects
+Schlüsselbild. It also proposes *mask path* and *onion skin* to app B, though app B uses *mask path*
+only once and hasn't shipped *onion skin* at all. App B proposes *composition* to app A in turn.
+`GLOSSARY.md` flags *layer*, which A approved as Ebene and B as Layer.
 
 Agent recipe: [skills/glossary-growth/SKILL.md](../skills/glossary-growth/SKILL.md).

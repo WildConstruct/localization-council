@@ -375,10 +375,15 @@
           "enum": [
             "clean",
             "delta",
+            "proposals",
             "errors",
             "error"
           ]
-        }
+        },
+        "mode": { "enum": ["dry-diff", "glossary"], "description": "Present for --mode glossary" },
+        "withProposals": { "type": ["integer", "null"], "minimum": 0 },
+        "artifacts": { "type": ["object", "null"], "additionalProperties": { "type": "string" } },
+        "counts": { "type": ["object", "null"] }
       }
     },
     "glossary": {
@@ -400,13 +405,15 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["source", "practitionerTerm", "keys", "consistent", "decision"],
+            "required": ["source", "practitionerTerm", "keys", "consistent", "decision", "kind", "from"],
             "properties": {
               "source": { "type": "string" },
               "practitionerTerm": { "type": "string" },
               "keys": { "type": "integer", "minimum": 0 },
               "consistent": { "type": "boolean" },
-              "decision": { "type": ["string", "null"] }
+              "decision": { "type": ["string", "null"] },
+              "kind": { "enum": ["harvest", "carry_over"] },
+              "from": { "type": ["string", "null"], "description": "The other app whose approved entry pre-filled the proposal" }
             }
           }
         },

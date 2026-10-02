@@ -12,9 +12,10 @@ GitHub issues with the `roadmap` label):
 - **Separate semantic-drift stage.** Measure drift independently of the judge model, so a lenient
   judge can't hide it.
 - **Starter glossary for a new locale** ([#3](https://github.com/WildConstruct/localization-council/issues/3)).
-  `council glossary harvest` grows a glossary from shipped strings; a `council glossary suggest`
-  would propose entries from the English source alone, for locales that haven't shipped yet. It
-  can reuse the proposals file and `council glossary apply`.
+  `council glossary harvest` grows a glossary from shipped strings, and `--reference` / `council
+  garden --mode glossary` carry over terms other apps already approved. A `council glossary suggest`
+  would cover the rest: terms no app has approved, from the English source alone. It can reuse the
+  proposals file and `council glossary apply`.
 - **Interactive glossary review.** A terminal flow that walks a person through
   `glossary-proposals.json` instead of editing JSON.
 

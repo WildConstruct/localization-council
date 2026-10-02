@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "0",
+  "locale": "de",
+  "entries": [
+    {
+      "source": "composition",
+      "locale": "de",
+      "productMeaning": "The timeline document an editor session works on.",
+      "relatedTerms": ["comp"],
+      "practitionerTerm": "Komposition",
+      "approved": true,
+      "rejected": []
+    },
+    {
+      "source": "layer",
+      "locale": "de",
+      "productMeaning": "One track in the editor's stack.",
+      "relatedTerms": [],
+      "practitionerTerm": "Layer",
+      "approved": true,
+      "rejected": []
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "editor.keyframe.add": "Keyframe hinzufügen",
+  "editor.keyframe.remove": "Schlüsselbild entfernen",
+  "editor.layer.new": "Neuer Layer",
+  "editor.layer.lock": "Layer sperren",
+  "editor.render.open": "Renderwarteschlange öffnen",
+  "editor.render.clear": "Renderwarteschlange leeren",
+  "editor.mask.edit": "Maskenpfad bearbeiten",
+  "editor.comp.settings": "Kompositionseinstellungen"
+}

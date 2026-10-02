@@ -190,6 +190,13 @@ The person decides and applies. After they do, `affected-keys.json` feeds `counc
 --keys-file` to re-audit shipped strings that use the new terms. Harvest into the same `--out`
 each time, so their decisions carry over.
 
+Across apps, `--reference <other app's glossary>` pre-fills proposals with the other app's approved
+term and rejects. Run `council garden --mode glossary --manifest … --json` to sweep a whole garden
+the same way. Exit `10` means some catalog has proposals, and `GLOSSARY.md` summarizes them along with
+terms two apps approved differently. The sweep also writes a term inventory (`inventory.json`,
+`.csv`, `.sql`). Load it into a team's database or Notion only if a person set that up; the council
+itself never connects to either.
+
 ### Scheduled routines
 
 For a nightly or garden-wide routine, follow [docs/routines/scheduled-agent.md](docs/routines/scheduled-agent.md).

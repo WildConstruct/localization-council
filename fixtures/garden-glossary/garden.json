@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "glossary-sweep-example",
+  "description": "Two apps that share motion-graphics terms. app-a is the established app with a reviewed glossary; app-b is newer. Sweep with: council garden --mode glossary --manifest fixtures/garden-glossary/garden.json --root fixtures/garden-glossary/checkouts --profile=mock",
+  "localeTiers": { "active": ["de"], "deferred": ["ja"] },
+  "repos": [
+    {
+      "repo": "example/app-a",
+      "catalogs": [
+        { "id": "ui", "source": "locales/en.json", "target": "locales/de.json", "locale": "de", "glossary": "locales/glossary.de.json" }
+      ]
+    },
+    {
+      "repo": "example/app-b",
+      "catalogs": [
+        { "id": "editor", "source": "locales/en.json", "target": "locales/de.json", "locale": "de", "glossary": "locales/glossary.de.json" },
+        { "id": "editor", "source": "locales/en.json", "target": "locales/ja.json", "locale": "ja", "glossary": null }
+      ]
+    }
+  ]
+}

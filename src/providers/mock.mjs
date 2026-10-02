@@ -85,7 +85,7 @@ export const MOCK_VARIANTS = Object.freeze(["mock", "mock:alt", "mock:third"]);
  */
 const MOCK_TERMS = {
   composition: { de: ["Komposition"], meaning: "Timeline container for layers" },
-  layer: { de: ["Ebene"], meaning: "One track in a composition" },
+  layer: { de: ["Ebene", "Layer"], meaning: "One track in a composition" },
   keyframe: { de: ["Keyframe", "Schlüsselbild"], meaning: "A stored value at a point in time" },
   "render queue": { de: ["Renderwarteschlange"], meaning: "List of compositions waiting to render" },
   "onion skin": { de: ["Onion Skin", "Zwiebelschale"], meaning: "Overlay of neighboring frames" },

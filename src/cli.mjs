@@ -12,6 +12,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { runCouncil, diffCatalogs } from "./index.mjs";
 import { runGardenDryDiff } from "./garden.mjs";
+import { runGardenGlossary } from "./garden-glossary.mjs";
 import { runTidy } from "./tidy.mjs";
 import { runGlossaryHarvest, runGlossaryApply } from "./glossary-growth.mjs";
 import { runDoctor } from "./doctor.mjs";
@@ -65,7 +66,7 @@ const COMMAND_FLAGS = {
     "strict-diversity",
   ],
   diff: [...COMMON, "source", "target"],
-  garden: [...COMMON, "manifest", "root", "dry-diff", "mode"],
+  garden: [...COMMON, ...PROVIDER_FLAGS, ...MODEL_FLAGS, "manifest", "root", "dry-diff", "mode", "extractor", "min-keys", "out", "no-cache", "cache-dir"],
   tidy: [
     ...COMMON,
     ...PROVIDER_FLAGS,
@@ -103,6 +104,7 @@ const GLOSSARY_FLAGS = {
     "locale",
     "glossary",
     "accepted",
+    "reference",
     "keys-file",
     "limit",
     "extractor",
@@ -124,7 +126,7 @@ Usage:
   council tidy    --catalog <en.json> --locale-file <locale.json> --locale <tag> [options]
   council glossary harvest --catalog <en.json> --locale-file <locale.json> --locale <tag> --glossary <g.json> [options]
   council glossary apply   --proposals <glossary-proposals.json> --glossary <g.json> [--write]
-  council garden  --manifest <garden.json> [--root <dir>] [--json]
+  council garden  --manifest <garden.json> [--root <dir>] [--mode dry-diff|glossary] [--json]
   council help | version
 
 Profiles (config/profiles.json): ${profileNames().join(" | ")}
@@ -167,6 +169,8 @@ tidy options:
 
 glossary harvest options (propose entries for recurring terms the glossary doesn't cover):
   --accepted <path>           also read a run's accepted.json (strings not merged yet)
+  --reference <g.json,…>      other apps' glossaries: their approved terms pre-fill proposals and
+                              are proposed here when this app's English uses them (meaning stays yours)
   --extractor <provider>      default: the profile's judge (its translator if the judge is api:jev)
   --min-keys <n>              propose a term once it appears in this many keys (default 2)
   --keys-file, --limit, --out (default ./scores/<locale>-glossary), --no-cache, --cache-dir
@@ -174,6 +178,13 @@ glossary harvest options (propose entries for recurring terms the glossary doesn
 glossary apply options (a person runs this after deciding the proposals):
   --write                     update --glossary in place (default: write glossary.next.json under --out)
   --out <dir>                 default: the proposals file's directory; affected-keys.json goes here too
+
+garden options:
+  --mode dry-diff             (default) which catalog pairs have a delta; calls no provider
+  --mode glossary             harvest every catalog; other apps' glossaries pre-fill proposals; writes
+                              a term inventory (inventory.json / .csv / .sql) and GLOSSARY.md under --out
+    --out <dir>                 default ./scores/garden-glossary
+    --profile, --extractor, --min-keys, --no-cache, --cache-dir as for glossary harvest
 
 doctor options:
   --online                    check that the configured OpenRouter model slugs exist
@@ -310,7 +321,9 @@ function humanHarvest(s, out, err, verbose) {
   }
   out(`${s.locale}: ${s.proposals.length} glossary proposal(s) for a person (${s.counts.terms} term(s) seen in ${s.counts.pairs} shipped string(s)).\n`);
   for (const p of s.proposals) {
-    out(`  ${p.source} → ${p.practitionerTerm} (${p.keys} key${p.keys === 1 ? "" : "s"}${p.consistent ? "" : ", renderings disagree"})${p.decision ? ` [${p.decision}]` : ""}\n`);
+    const seen = p.keys ? `${p.keys} key${p.keys === 1 ? "" : "s"}` : "not shipped yet";
+    const from = p.from ? `, approved in ${p.from}` : "";
+    out(`  ${p.source} → ${p.practitionerTerm} (${seen}${p.consistent ? "" : ", renderings disagree"}${from})${p.decision ? ` [${p.decision}]` : ""}\n`);
   }
   out(`Report:    ${s.artifacts.report}\nDecide in: ${s.artifacts.proposals}\n`);
 }
@@ -327,6 +340,34 @@ function humanApply(s, out, err) {
   }
   for (const x of s.skipped) out(`Skipped "${x.source}": ${x.reason}.\n`);
   if (c.pending) out(`${c.pending} proposal(s) still need a decision.\n`);
+}
+
+/** The garden walk to run (dry-diff or glossary); its flags are checked here. */
+function gardenMode(args) {
+  if (!args.manifest) throw new UsageError("garden requires --manifest");
+  const mode = args.mode || "dry-diff";
+  if (mode !== "dry-diff" && mode !== "glossary") {
+    throw new UsageError(`garden mode "${mode}" is not implemented (dry-diff or glossary).`);
+  }
+  const glossaryOnly = [...PROVIDER_FLAGS, ...MODEL_FLAGS, "extractor", "min-keys", "out", "no-cache", "cache-dir"].filter((f) => args[f] != null);
+  if (mode === "dry-diff" && glossaryOnly.length) throw new UsageError(`--${glossaryOnly[0]} only applies to --mode glossary`);
+  if (mode === "glossary" && args["dry-diff"]) throw new UsageError("--dry-diff and --mode glossary are different walks; pick one");
+  return mode;
+}
+
+function humanGardenGlossary(s, out, err, verbose) {
+  for (const w of s.warnings) err(`warning: ${w.message}\n`);
+  for (const e of s.errors) err(`error: ${e.message}\n`);
+  if (!s.withProposals) {
+    if (verbose) out(`Glossary sweep: ${s.walked} catalog(s), nothing new for any glossary. ${s.artifacts.report}\n`);
+    return;
+  }
+  out(`Glossary sweep: ${s.withProposals} of ${s.walked} catalog(s) have proposals for a person (${s.counts.conflicts} cross-app conflict(s)).\n`);
+  for (const r of s.results) {
+    if (r.status !== "PROPOSALS") continue;
+    out(`  ${r.repo} ${r.id} (${r.locale}): ${r.proposals} proposal(s)${r.carryOver ? `, ${r.carryOver} from other apps` : ""} · ${r.report}\n`);
+  }
+  out(`Report:    ${s.artifacts.report}\nInventory: ${s.artifacts.inventory} (.csv, .sql next to it)\n`);
 }
 
 function humanDoctor(s, out) {
@@ -437,6 +478,7 @@ export async function main(argv, io = {}) {
         locale: args.locale,
         glossary: args.glossary,
         accepted: args.accepted,
+        references: args.reference,
         keysFile: args["keys-file"],
         limit: args.limit,
         extractor: args.extractor,
@@ -456,12 +498,26 @@ export async function main(argv, io = {}) {
     } else if (cmd === "glossary") {
       summary = await runGlossaryApply({ proposals: args.proposals, glossary: args.glossary, out: args.out, write: Boolean(args.write), argv });
       if (!args.json) humanApply(summary, out, err);
+    } else if (cmd === "garden" && gardenMode(args) === "glossary") {
+      const selection = modelSelection(args);
+      summary = await runGardenGlossary({
+        manifest: args.manifest,
+        root: args.root || process.cwd(),
+        out: args.out,
+        minKeys: args["min-keys"],
+        extractor: args.extractor,
+        mock: Boolean(args.mock),
+        provider: args.provider,
+        profile: selectedProfile(args, selection),
+        ...selection,
+        cache: !args["no-cache"],
+        cacheDir: args["cache-dir"],
+        modelsFile: args.models,
+        fetchImpl: io.fetchImpl,
+        argv,
+      });
+      if (!args.json) humanGardenGlossary(summary, out, err, args.verbose);
     } else if (cmd === "garden") {
-      if (!args.manifest) throw new UsageError("garden requires --manifest");
-      const mode = args.mode || "dry-diff";
-      if (mode !== "dry-diff") {
-        throw new UsageError(`garden mode "${mode}" is not implemented (only --dry-diff).`);
-      }
       const g = await runGardenDryDiff({ manifest: args.manifest, root: args.root || process.cwd() });
       summary = envelope("garden", {
         status: g.errors ? "errors" : g.withDelta ? "delta" : "clean",

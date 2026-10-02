@@ -71,11 +71,12 @@
           },
           "origin": {
             "type": "object",
-            "description": "Where the entry came from. `council glossary apply` sets { via: \"harvest\", keys } on entries a person approved from harvested proposals.",
+            "description": "Where the entry came from. `council glossary apply` sets { via: \"harvest\", keys } on entries a person approved from harvested proposals, and { via: \"reference\", from, keys } on terms carried over from another app's glossary.",
             "required": ["via"],
             "additionalProperties": false,
             "properties": {
-              "via": { "type": "string", "description": "harvest, manual, import, …" },
+              "via": { "type": "string", "description": "harvest, reference, manual, import, …" },
+              "from": { "type": "string", "description": "The app whose glossary the term came from (via: reference)" },
               "keys": {
                 "type": "array",
                 "items": { "type": "string" },

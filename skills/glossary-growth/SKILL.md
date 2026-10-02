@@ -44,6 +44,9 @@ council glossary harvest \
   --json
 ```
 
+   With other apps that share terms, add `--reference app-a=<their glossary>`. For a whole garden,
+   run `council garden --mode glossary --manifest <garden.json> --root <checkouts> --out <dir> --json`
+   instead; every catalog then references the others.
 3. Exit `0`: nothing new. Stay quiet. Exit `10`: send the person `proposals` from the summary
    (term → suggested rendering, key count, and whether the renderings disagree, listing those
    first), plus the paths of `PROPOSALS.md` and `glossary-proposals.json`.

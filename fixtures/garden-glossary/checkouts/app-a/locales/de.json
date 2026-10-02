@@ -1,0 +1,10 @@
+{
+  "ui.keyframe.add": "Keyframe hinzufügen",
+  "ui.keyframe.delete": "Keyframes löschen",
+  "ui.layer.add": "Ebene hinzufügen",
+  "ui.layer.rename": "Ebenen umbenennen",
+  "ui.viewport.onion": "Onion Skin",
+  "ui.mask.path": "Maskenpfad",
+  "ui.timeline.playhead": "Playhead bewegen",
+  "ui.timeline.snap": "Am Playhead ausrichten"
+}

@@ -1,0 +1,11 @@
+{
+  "ui.keyframe.add": "Add keyframe",
+  "ui.keyframe.delete": "Delete keyframes",
+  "ui.layer.add": "Add layer",
+  "ui.layer.rename": "Rename layers",
+  "ui.viewport.onion": "Onion skin",
+  "ui.mask.path": "Mask path",
+  "ui.timeline.playhead": "Move playhead",
+  "ui.timeline.snap": "Snap to playhead",
+  "ui.comp.new": "New composition"
+}

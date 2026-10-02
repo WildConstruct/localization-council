@@ -1,0 +1,11 @@
+{
+  "editor.keyframe.add": "Add keyframe",
+  "editor.keyframe.remove": "Remove keyframe",
+  "editor.layer.new": "New layer",
+  "editor.layer.lock": "Lock layer",
+  "editor.render.open": "Open render queue",
+  "editor.render.clear": "Clear render queue",
+  "editor.mask.edit": "Edit mask path",
+  "editor.onion.toggle": "Toggle onion skin",
+  "editor.comp.settings": "Composition settings"
+}

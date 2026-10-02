@@ -72,10 +72,13 @@ export function validateGlossary(doc) {
     if (entry.origin != null) {
       const o = entry.origin;
       if (typeof o !== "object" || Array.isArray(o) || typeof o.via !== "string" || !o.via) {
-        throw new Error(`Glossary entry[${i}].origin must be { via, keys? }`);
+        throw new Error(`Glossary entry[${i}].origin must be { via, from?, keys? }`);
       }
       if (o.keys != null && (!Array.isArray(o.keys) || !o.keys.every((k) => typeof k === "string"))) {
         throw new Error(`Glossary entry[${i}].origin.keys must be strings`);
+      }
+      if (o.from != null && typeof o.from !== "string") {
+        throw new Error(`Glossary entry[${i}].origin.from must be a string`);
       }
     }
   });
@@ -245,6 +248,37 @@ export function sameTerm(a, b) {
 }
 
 /**
+ * Two terms that are the same term (sameTerm) share their first three letters once hyphens and
+ * spaces are removed: inflections only change the end of the last word. An index bucketed on that
+ * keeps lookups across large glossaries fast.
+ */
+const bucketOf = (term) => squash(String(term ?? "").normalize("NFC")).slice(0, 3);
+
+/**
+ * An index for finding an item by term with sameTerm semantics.
+ * @param {object[]} items
+ * @param {(item: object) => string[]} termsOf - the terms an item answers to
+ */
+export function termIndex(items = [], termsOf = (x) => [x]) {
+  const buckets = new Map();
+  const add = (item) => {
+    for (const t of termsOf(item)) {
+      const b = bucketOf(t);
+      if (!buckets.has(b)) buckets.set(b, []);
+      buckets.get(b).push([t, item]);
+    }
+  };
+  for (const item of items) add(item);
+  return {
+    add,
+    find(term) {
+      for (const [t, item] of buckets.get(bucketOf(term)) ?? []) if (sameTerm(t, term)) return item;
+      return undefined;
+    },
+  };
+}
+
+/**
  * Keys of `enMap` whose English contains any of `terms`. Prefilters with a substring test, so it
  * stays fast across a whole catalog.
  * @param {Record<string,string>} enMap
@@ -253,12 +287,25 @@ export function sameTerm(a, b) {
 export function keysUsingTerm(enMap, terms) {
   const ms = terms.map((t) => ({ needle: termNeedle(t), re: termRegex(t) })).filter((m) => m.re);
   const out = [];
-  for (const [k, v] of Object.entries(enMap)) {
-    const text = String(v ?? "").normalize("NFC");
-    const flat = squash(text);
-    if (ms.some((m) => flat.includes(m.needle) && m.re.test(text))) out.push(k);
+  for (const { key, text, flat } of preparedCatalog(enMap)) {
+    if (ms.some((m) => flat.includes(m.needle) && m.re.test(text))) out.push(key);
   }
   return out.sort();
+}
+
+/** A catalog's strings normalized once (NFC, plus the squashed haystack), reused across term lookups. */
+const preparedCatalogs = new WeakMap();
+
+function preparedCatalog(enMap) {
+  let prepared = preparedCatalogs.get(enMap);
+  if (!prepared) {
+    prepared = Object.entries(enMap).map(([key, v]) => {
+      const text = String(v ?? "").normalize("NFC");
+      return { key, text, flat: squash(text) };
+    });
+    preparedCatalogs.set(enMap, prepared);
+  }
+  return prepared;
 }
 
 /**
