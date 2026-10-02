@@ -118,6 +118,18 @@ describe("provider contract", () => {
     assert.equal(onion.model, "openai/gpt-5.6-sol");
   });
 
+  it("terms rows report each term and its rendering (openrouter replay, mock, fake CLI)", async () => {
+    for (const id of ["openrouter:openai/gpt-5.6-sol", "mock", "cli:codex"]) {
+      const adapter = createAdapter(id, { fetchImpl: replayFetch([]) });
+      const rows = normalizeStageResults("terms", BATCHES.terms, await adapter.terms(BATCHES.terms, { telemetry: new Telemetry() }), adapter.describe("terms"));
+      assert.deepEqual(
+        rows.map((r) => r.terms.map((t) => `${t.source}→${t.target}/${t.base}`)),
+        [["layer→Ebenen/Ebene"], []],
+        id,
+      );
+    }
+  });
+
   it("api:jev compare votes only when the faceoff gate passes", async () => {
     const adapter = createAdapter("api:jev", { fetchImpl: replayFetch([]) });
     const [row] = await adapter.compare(BATCHES.compare, { telemetry: new Telemetry() });

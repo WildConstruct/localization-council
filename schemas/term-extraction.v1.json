@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/term-extraction.v1.json",
+  "title": "Model output: the terminology in one shipped string pair",
+  "description": "What a terms call must return per item. Batched HTTP calls wrap items as { items: [{ key, ...this }] }. An empty list means the string has no product or domain terms.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["terms"],
+  "properties": {
+    "terms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "target", "base", "productMeaning"],
+        "properties": {
+          "source": { "type": "string", "minLength": 1, "description": "The English term in its base form" },
+          "target": { "type": "string", "minLength": 1, "description": "The text the translation uses for it, copied verbatim" },
+          "base": { "type": "string", "description": "Dictionary form of target in the locale" },
+          "productMeaning": { "type": "string", "description": "What the term means in this product, in a few words" }
+        }
+      }
+    }
+  }
+}

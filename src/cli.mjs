@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { runCouncil, diffCatalogs } from "./index.mjs";
 import { runGardenDryDiff } from "./garden.mjs";
 import { runTidy } from "./tidy.mjs";
+import { runGlossaryHarvest, runGlossaryApply } from "./glossary-growth.mjs";
 import { runDoctor } from "./doctor.mjs";
 import { councilVersion, presetNames, profileNames } from "./config.mjs";
 import { envelope, errorSummary, EXIT, UsageError } from "./summary.mjs";
@@ -30,6 +31,7 @@ const BOOLEAN_FLAGS = new Set([
   "generate-bt",
   "online",
   "probe",
+  "write",
   "help",
 ]);
 
@@ -84,8 +86,32 @@ const COMMAND_FLAGS = {
     "cache-dir",
   ],
   doctor: [...COMMON, "online", "probe", "profile", "preset"],
+  glossary: [...COMMON],
   help: [...COMMON],
   version: [...COMMON],
+};
+
+/** `council glossary <action>` flags. */
+const GLOSSARY_FLAGS = {
+  harvest: [
+    ...COMMON,
+    ...PROVIDER_FLAGS,
+    ...MODEL_FLAGS,
+    "catalog",
+    "en",
+    "locale-file",
+    "locale",
+    "glossary",
+    "accepted",
+    "keys-file",
+    "limit",
+    "extractor",
+    "min-keys",
+    "out",
+    "no-cache",
+    "cache-dir",
+  ],
+  apply: [...COMMON, "proposals", "glossary", "out", "write"],
 };
 
 export function usage() {
@@ -96,6 +122,8 @@ Usage:
   council run     --catalog <en.json> --locale <tag> [options]
   council diff    --source <en.json> --target <locale.json> [--json]
   council tidy    --catalog <en.json> --locale-file <locale.json> --locale <tag> [options]
+  council glossary harvest --catalog <en.json> --locale-file <locale.json> --locale <tag> --glossary <g.json> [options]
+  council glossary apply   --proposals <glossary-proposals.json> --glossary <g.json> [--write]
   council garden  --manifest <garden.json> [--root <dir>] [--json]
   council help | version
 
@@ -137,12 +165,22 @@ tidy options:
   --generate-bt               back-translate rows missing from --bt-file with the profile's BT provider
   --glossary, --keys-file, --limit, --out (default ./scores/<locale>-tidy), --meaning-threshold
 
+glossary harvest options (propose entries for recurring terms the glossary doesn't cover):
+  --accepted <path>           also read a run's accepted.json (strings not merged yet)
+  --extractor <provider>      default: the profile's judge (its translator if the judge is api:jev)
+  --min-keys <n>              propose a term once it appears in this many keys (default 2)
+  --keys-file, --limit, --out (default ./scores/<locale>-glossary), --no-cache, --cache-dir
+
+glossary apply options (a person runs this after deciding the proposals):
+  --write                     update --glossary in place (default: write glossary.next.json under --out)
+  --out <dir>                 default: the proposals file's directory; affected-keys.json goes here too
+
 doctor options:
   --online                    check that the configured OpenRouter model slugs exist
   --probe                     one tiny live call per installed CLI to confirm auth
   --profile <name>            exit 3 if that profile is not runnable here
 
-Exit codes: 0 clean · 10 escalations (run) / reopen rows (tidy) · 1 error · 2 usage · 3 preflight failed
+Exit codes: 0 clean · 10 escalations (run) / reopen rows (tidy) / undecided proposals (glossary) · 1 error · 2 usage · 3 preflight failed
 Artifacts (run): candidates.json backtranslations.json scores.json escalate.json accepted.json report.md manifest.json
 The council accepts into output under --out. A person merges. The council never merges.
 `;
@@ -180,10 +218,20 @@ export function parseArgs(argv) {
 }
 
 function checkFlags(cmd, args) {
-  const allowed = new Set(COMMAND_FLAGS[cmd] || []);
+  let name = cmd;
+  let allowed = COMMAND_FLAGS[cmd] || [];
+  if (cmd === "glossary" && !args.help) {
+    const action = args._[0];
+    if (!GLOSSARY_FLAGS[action]) {
+      throw new UsageError(`glossary needs an action: harvest or apply${action ? ` (not "${action}")` : ""}. Try: council help`);
+    }
+    name = `glossary ${action}`;
+    allowed = GLOSSARY_FLAGS[action];
+  }
+  const allow = new Set(allowed);
   for (const k of Object.keys(args)) {
     if (k === "_") continue;
-    if (!allowed.has(k)) throw new UsageError(`Unknown option --${k} for "${cmd}". Try: council help`);
+    if (!allow.has(k)) throw new UsageError(`Unknown option --${k} for "${name}". Try: council help`);
   }
 }
 
@@ -249,6 +297,31 @@ function humanRun(s, out, err, verbose) {
   out(`${s.locale}: ${s.counts.escalated} escalation(s) for a human (${s.counts.accepted} accepted into output).\n`);
   for (const e of s.escalations) out(`  ${e.key}: ${e.reasons.join("; ")}\n`);
   out(`Report: ${s.artifacts.report}\nSheet:  ${s.artifacts.escalate}\n`);
+}
+
+function humanHarvest(s, out, verbose) {
+  if (!s.proposals.length) {
+    if (verbose) out(`${s.locale}: ${s.counts.terms} term(s) seen in ${s.counts.pairs} shipped string(s); nothing new for the glossary.\n`);
+    return;
+  }
+  out(`${s.locale}: ${s.proposals.length} glossary proposal(s) for a person (${s.counts.terms} term(s) seen in ${s.counts.pairs} shipped string(s)).\n`);
+  for (const p of s.proposals) {
+    out(`  ${p.source} → ${p.practitionerTerm} (${p.keys} key${p.keys === 1 ? "" : "s"}${p.consistent ? "" : ", renderings disagree"})${p.decision ? ` [${p.decision}]` : ""}\n`);
+  }
+  out(`Report:    ${s.artifacts.report}\nDecide in: ${s.artifacts.proposals}\n`);
+}
+
+function humanApply(s, out, err) {
+  for (const w of s.warnings) err(`warning: ${w.message}\n`);
+  const c = s.counts;
+  if (s.written !== "nothing") {
+    out(`${s.locale}: ${c.approved} term(s) approved, ${c.declined} declined; the glossary now has ${c.entries} entr${c.entries === 1 ? "y" : "ies"}.\n`);
+    out(s.written === "in_place" ? `Updated ${s.artifacts.glossary}\n` : `Wrote ${s.artifacts.glossary} (copy it over your glossary, or rerun with --write)\n`);
+    if (c.affectedKeys) {
+      out(`${c.affectedKeys} key(s) use the new terms. Re-audit the shipped ones: council tidy … --keys-file ${s.artifacts.affectedKeys}\n`);
+    }
+  }
+  if (c.pending) out(`${c.pending} proposal(s) still need a decision.\n`);
 }
 
 function humanDoctor(s, out) {
@@ -351,6 +424,33 @@ export async function main(argv, io = {}) {
       } else if (!args.json && args.verbose) {
         out(`${summary.locale}: ${summary.counts.rows} row(s) re-audited, none reopen.\n`);
       }
+    } else if (cmd === "glossary" && args._[0] === "harvest") {
+      const selection = modelSelection(args);
+      summary = await runGlossaryHarvest({
+        catalog: args.catalog || args.en,
+        localeFile: args["locale-file"],
+        locale: args.locale,
+        glossary: args.glossary,
+        accepted: args.accepted,
+        keysFile: args["keys-file"],
+        limit: args.limit,
+        extractor: args.extractor,
+        minKeys: args["min-keys"],
+        out: args.out,
+        mock: Boolean(args.mock),
+        provider: args.provider,
+        profile: selectedProfile(args, selection),
+        ...selection,
+        cache: !args["no-cache"],
+        cacheDir: args["cache-dir"],
+        modelsFile: args.models,
+        fetchImpl: io.fetchImpl,
+        argv,
+      });
+      if (!args.json) humanHarvest(summary, out, args.verbose);
+    } else if (cmd === "glossary") {
+      summary = await runGlossaryApply({ proposals: args.proposals, glossary: args.glossary, out: args.out, write: Boolean(args.write), argv });
+      if (!args.json) humanApply(summary, out, err);
     } else if (cmd === "garden") {
       if (!args.manifest) throw new UsageError("garden requires --manifest");
       const mode = args.mode || "dry-diff";
@@ -389,6 +489,7 @@ export async function main(argv, io = {}) {
   } catch (e) {
     const summary = errorSummary(COMMAND_FLAGS[cmd] ? cmd : "help", e);
     if (summary.command === "help") summary.usage = null;
+    if (summary.command === "glossary") summary.action = GLOSSARY_FLAGS[args._?.[0]] ? args._[0] : null;
     err(`error: ${summary.errors[0].message}\n`);
     // Honor --json even when argument parsing itself failed.
     if (args.json || argv.includes("--json")) out(JSON.stringify(summary, null, 2) + "\n");

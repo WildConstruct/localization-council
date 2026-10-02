@@ -27,6 +27,7 @@ import { glossaryPromptBlock } from "../glossary.mjs";
 import { familyOf } from "./families.mjs";
 import { chunk, MissingVerdictError } from "./contract.mjs";
 import { validateJudgeParsed } from "./judge-schema.mjs";
+import { cleanTerms } from "./terms-schema.mjs";
 import { BATCH_SYSTEM, PROMPT_VERSION } from "./prompts.mjs";
 
 const ITEM_SCHEMA_FILE = {
@@ -34,6 +35,7 @@ const ITEM_SCHEMA_FILE = {
   backtranslate: "backtranslation.v1.json",
   judge: "judge-verdict.v1.json",
   compare: "compare-verdict.v1.json",
+  terms: "term-extraction.v1.json",
 };
 
 const RETRYABLE_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504, 520, 522, 524, 529]);
@@ -280,6 +282,9 @@ export function createOpenRouterAdapter(slug, opts = {}) {
         items: items.map(({ key, source, candidate, backtranslation }) => ({ key, source, candidate, backtranslation })),
       };
     }
+    if (stage === "terms") {
+      return { locale: batch.locale, items: items.map(({ key, source, candidate }) => ({ key, source, candidate })) };
+    }
     return {
       locale: batch.locale,
       glossary,
@@ -299,7 +304,8 @@ export function createOpenRouterAdapter(slug, opts = {}) {
       else if (stage === "judge") {
         const v = validateJudgeParsed(r, { provider: id, key: r.key, glossary: batch.glossary });
         rows.set(r.key, { ...v, model });
-      } else {
+      } else if (stage === "terms") rows.set(r.key, { key: r.key, terms: cleanTerms(r.terms), model });
+      else {
         const labels = Object.keys(it.options || {});
         if (r.pick !== "none" && !labels.includes(r.pick)) continue; // treated as missing → single retry
         rows.set(r.key, { key: r.key, pick: r.pick, rationale: r.rationale, model });
@@ -370,6 +376,7 @@ export function createOpenRouterAdapter(slug, opts = {}) {
     backtranslate: (batch, ctx) => runStage("backtranslate", batch, ctx),
     judge: (batch, ctx) => runStage("judge", batch, ctx),
     compare: (batch, ctx) => runStage("compare", batch, ctx),
+    terms: (batch, ctx) => runStage("terms", batch, ctx),
   };
 }
 

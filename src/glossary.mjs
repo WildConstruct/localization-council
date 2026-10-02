@@ -69,7 +69,24 @@ export function validateGlossary(doc) {
         );
       }
     });
+    if (entry.origin != null) {
+      const o = entry.origin;
+      if (typeof o !== "object" || Array.isArray(o) || typeof o.via !== "string" || !o.via) {
+        throw new Error(`Glossary entry[${i}].origin must be { via, keys? }`);
+      }
+      if (o.keys != null && (!Array.isArray(o.keys) || !o.keys.every((k) => typeof k === "string"))) {
+        throw new Error(`Glossary entry[${i}].origin.keys must be strings`);
+      }
+    }
   });
+  if (doc.declined != null) {
+    if (!Array.isArray(doc.declined)) throw new Error("Glossary.declined must be an array");
+    doc.declined.forEach((d, i) => {
+      if (!d || typeof d.source !== "string" || !d.source || typeof d.why !== "string") {
+        throw new Error(`Glossary.declined[${i}] must be { source, why }`);
+      }
+    });
+  }
   return doc;
 }
 
@@ -105,15 +122,112 @@ export function glossaryPromptBlock(glossary) {
 export function findRejectedTerms(source, candidate, glossary) {
   const hits = [];
   if (!glossary?.entries?.length) return hits;
-  const src = String(source ?? "").toLowerCase();
-  const cand = String(candidate ?? "").toLowerCase();
+  const cand = String(candidate ?? "").normalize("NFC").toLowerCase();
   for (const e of glossary.entries) {
-    if (!src.includes(e.source.toLowerCase())) continue;
+    if (!sourceHasTerm(source, e.source)) continue;
     for (const r of e.rejected) {
-      if (r.term && cand.includes(r.term.toLowerCase())) {
+      if (r.term && cand.includes(r.term.normalize("NFC").toLowerCase())) {
         hits.push({ term: r.term, why: r.why, source: e.source });
       }
     }
   }
   return hits;
+}
+
+const WORD_CHAR = "[\\p{L}\\p{N}]";
+const termRegexCache = new Map();
+
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** English inflections of a term's last word: s/es/'s/d/ed/ing, e-drop, y→ies/ied, doubled consonant. */
+function lastWordPattern(word) {
+  const forms = [`${escapeRe(word)}(?:s|es|'s|’s|d|ed|ing|ings)?`];
+  if (/[a-z]e$/.test(word)) forms.push(`${escapeRe(word.slice(0, -1))}(?:ing|ings)`);
+  if (/[^aeiou]y$/.test(word)) forms.push(`${escapeRe(word.slice(0, -1))}(?:ies|ied)`);
+  if (/[^aeiou][aeiou][bdgklmnprt]$/.test(word)) forms.push(`${escapeRe(word + word.at(-1))}(?:ed|ing|ings)`);
+  return forms.length === 1 ? forms[0] : `(?:${forms.join("|")})`;
+}
+
+function termBody(term) {
+  const words = String(term ?? "").normalize("NFC").trim().toLowerCase().split(/[\s\-\u2010-\u2013]+/u).filter(Boolean);
+  if (!words.length) return null;
+  return [...words.slice(0, -1).map(escapeRe), lastWordPattern(words.at(-1))].join("[-\\s\\u2010-\\u2013]?");
+}
+
+function cachedRegex(kind, term, build) {
+  const key = `${kind}\u0000${String(term ?? "").normalize("NFC").trim().toLowerCase()}`;
+  if (!termRegexCache.has(key)) {
+    const body = termBody(term);
+    termRegexCache.set(key, body ? build(body) : null);
+  }
+  return termRegexCache.get(key);
+}
+
+/**
+ * Regex that finds an English glossary term in English text: whole words only, case-insensitive,
+ * hyphen/space/no-space variants ("pre-compose", "precompose") and common English inflections of
+ * the last word ("layers", "skinning", "composing").
+ */
+export function termRegex(term) {
+  return cachedRegex("find", term, (body) => new RegExp(`(?<!${WORD_CHAR})${body}(?!${WORD_CHAR})`, "iu"));
+}
+
+/**
+ * A lowercase substring every match of `term` contains: the first word of a multi-word term, or a
+ * single word without the final e/y its inflections drop. A cheap test before the regex.
+ */
+function termNeedle(term) {
+  const words = String(term ?? "").normalize("NFC").trim().toLowerCase().split(/[\s\-\u2010-\u2013]+/u).filter(Boolean);
+  const needle = words[0] ?? "";
+  return words.length === 1 && /[a-z][ey]$/.test(needle) ? needle.slice(0, -1) : needle;
+}
+
+/** Per-glossary matchers, built once per entries array. */
+const compiledEntries = new WeakMap();
+
+function matchers(entries) {
+  if (!compiledEntries.has(entries)) {
+    compiledEntries.set(
+      entries,
+      entries.map((e) => ({ entry: e, needle: termNeedle(e.source), re: termRegex(e.source) })),
+    );
+  }
+  return compiledEntries.get(entries);
+}
+
+/** Whether English `text` contains the glossary term `term` (see termRegex). */
+export function sourceHasTerm(text, term) {
+  const re = termRegex(term);
+  return Boolean(re && re.test(String(text ?? "").normalize("NFC")));
+}
+
+/** Whether two English terms are the same term ("Layers" and "layer", "precompose" and "pre-compose"). */
+export function sameTerm(a, b) {
+  const exact = (text, term) => {
+    const re = cachedRegex("exact", term, (body) => new RegExp(`^(?:${body})$`, "iu"));
+    return Boolean(re && re.test(String(text ?? "").normalize("NFC").trim()));
+  };
+  return exact(a, b) || exact(b, a);
+}
+
+/**
+ * The part of a glossary that applies to some English strings: the entries whose source term
+ * appears in at least one of them. Providers get only this slice, and the result cache keys on it,
+ * so adding an entry re-runs only the strings that use the new term. `declined` never reaches a
+ * provider. Returns null when no entry applies.
+ * @param {object|null} glossary
+ * @param {string[]} sources
+ */
+export function glossarySlice(glossary, sources) {
+  if (!glossary?.entries?.length) return null;
+  const texts = sources.map((s) => String(s ?? "").normalize("NFC"));
+  const lowered = texts.map((t) => t.toLowerCase());
+  const entries = [];
+  for (const m of matchers(glossary.entries)) {
+    if (m.re && texts.some((t, i) => lowered[i].includes(m.needle) && m.re.test(t))) entries.push(m.entry);
+  }
+  if (!entries.length) return null;
+  return { schemaVersion: glossary.schemaVersion, locale: glossary.locale, entries };
 }

@@ -6,7 +6,7 @@
  *   cli:claude | cli:grok | cli:codex       local terminal CLIs (Fleet)
  *   openrouter                              stage default from config/models.json
  *   openrouter:<vendor>/<model>             any OpenRouter model slug
- *   api:jev (alias jev)                     judge / compare only
+ *   api:jev (alias jev)                     judge / compare only (no translate, back-translate or terms)
  *
  * A --provider spec is one of:
  *   a profile name        fleet | openrouter | mock   (see config/profiles.json)
@@ -31,7 +31,7 @@ const JUDGE_ONLY = new Set(["api:jev", "jev"]);
 /** Stages each provider id can run (static check before any call). */
 export function supportedStages(spec) {
   if (JUDGE_ONLY.has(spec)) return ["judge", "compare"];
-  return ["translate", "backtranslate", "judge", "compare"];
+  return ["translate", "backtranslate", "judge", "compare", "terms"];
 }
 
 /**

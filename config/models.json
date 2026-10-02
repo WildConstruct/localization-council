@@ -78,7 +78,8 @@
       "translate": 20,
       "backtranslate": 20,
       "judge": 5,
-      "compare": 5
+      "compare": 5,
+      "terms": 20
     },
     "timeoutMs": 120000,
     "maxRetries": 3,

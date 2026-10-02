@@ -16,7 +16,7 @@
     },
     "version": {
       "type": "string",
-      "description": "Optional glossary version. Part of the result-cache key; when omitted a content hash is used."
+      "description": "Optional glossary version, recorded in manifests. The result cache keys on the content of the entries each string uses, so bumping this alone re-runs nothing."
     },
     "entries": {
       "type": "array",
@@ -68,7 +68,34 @@
                 "why": { "type": "string" }
               }
             }
+          },
+          "origin": {
+            "type": "object",
+            "description": "Where the entry came from. `council glossary apply` sets { via: \"harvest\", keys } on entries a person approved from harvested proposals.",
+            "required": ["via"],
+            "additionalProperties": false,
+            "properties": {
+              "via": { "type": "string", "description": "harvest, manual, import, …" },
+              "keys": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Catalog keys whose shipped strings were the evidence"
+              }
+            }
           }
+        }
+      }
+    },
+    "declined": {
+      "type": "array",
+      "description": "English terms a person decided are not glossary terms. `council glossary harvest` never proposes them again. Never sent to providers.",
+      "items": {
+        "type": "object",
+        "required": ["source", "why"],
+        "additionalProperties": false,
+        "properties": {
+          "source": { "type": "string" },
+          "why": { "type": "string" }
         }
       }
     }

@@ -12,6 +12,7 @@
  */
 
 import { perItem } from "./contract.mjs";
+import { sourceHasTerm } from "../glossary.mjs";
 
 /** Approved reference wording (German). mock:alt follows this. */
 const DE_REFERENCE = {
@@ -35,6 +36,15 @@ const DE_REFERENCE = {
   Ready: "Bereit",
   "Rendering…": "Wird gerendert…",
   "GPU unavailable — falling back to CPU": "GPU nicht verfügbar — Fallback auf CPU",
+  // fixtures/glossary-growth
+  "Delete layer": "Ebene löschen",
+  "Rename layers": "Ebenen umbenennen",
+  "Add keyframe": "Keyframe hinzufügen",
+  "Delete keyframes": "Keyframes löschen",
+  "Ease keyframe": "Keyframe glätten",
+  "Clear render queue": "Renderwarteschlange leeren",
+  "Composition settings": "Kompositionseinstellungen",
+  "Zoom viewport": "Viewport zoomen",
 };
 
 /** Per-variant differences from the reference. */
@@ -60,6 +70,7 @@ const DE_LITERAL_BT = {
   "Wird verarbeitet…": "Processing…",
   Verschachteln: "Nest",
   "Rendern…": "Rendering…",
+  "Schlüsselbild glätten": "Smooth key image",
 };
 
 const DE_REVERSE = Object.fromEntries(
@@ -67,6 +78,50 @@ const DE_REVERSE = Object.fromEntries(
 );
 
 export const MOCK_VARIANTS = Object.freeze(["mock", "mock:alt", "mock:third"]);
+
+/**
+ * Terms the mock extractor knows, with the German words it recognizes for each (base forms).
+ * Covers fixtures/toy and fixtures/glossary-growth. In other locales only English loans are found.
+ */
+const MOCK_TERMS = {
+  composition: { de: ["Komposition"], meaning: "Timeline container for layers" },
+  layer: { de: ["Ebene"], meaning: "One track in a composition" },
+  keyframe: { de: ["Keyframe", "Schlüsselbild"], meaning: "A stored value at a point in time" },
+  "render queue": { de: ["Renderwarteschlange"], meaning: "List of compositions waiting to render" },
+  "onion skin": { de: ["Onion Skin", "Zwiebelschale"], meaning: "Overlay of neighboring frames" },
+  "pre-compose": { de: ["Vorkomponieren", "Vorab zusammenstellen", "Verschachteln"], meaning: "Nest layers into a new composition" },
+  playhead: { de: ["Playhead"], meaning: "Current-time marker" },
+  viewport: { de: ["Viewport"], meaning: "The canvas preview area" },
+  "mask path": { de: ["Maskenpfad"], meaning: "The outline of a mask" },
+  "anchor point": { de: ["Ankerpunkt"], meaning: "The point a layer transforms around" },
+};
+
+/** The word in `candidate` that starts with `base` (case-insensitive), e.g. "Ebenen" for "Ebene". */
+function findWordFrom(candidate, base) {
+  const lower = candidate.toLowerCase();
+  const at = lower.indexOf(base.toLowerCase());
+  if (at < 0) return null;
+  let end = at + base.length;
+  while (end < candidate.length && /[\p{L}\p{N}]/u.test(candidate[end])) end++;
+  return candidate.slice(at, end);
+}
+
+/** Deterministic term extraction for one shipped pair. */
+export function mockTermsOne({ key, source, candidate, locale }) {
+  const terms = [];
+  for (const [term, info] of Object.entries(MOCK_TERMS)) {
+    if (!sourceHasTerm(source, term)) continue;
+    const bases = locale.startsWith("de") ? info.de : [term];
+    for (const base of bases) {
+      const target = findWordFrom(candidate, base);
+      if (target) {
+        terms.push({ source: term, target, base, productMeaning: info.meaning });
+        break;
+      }
+    }
+  }
+  return { key, terms };
+}
 
 function translateOne(variant, text, locale) {
   if (!locale.startsWith("de")) return `[${locale}] ${text}`;
@@ -194,6 +249,9 @@ export function createMockAdapter(variant = "mock") {
     },
     async compare(batch) {
       return perItem(batch.items, async (item) => compareOne(variant, item, batch.locale, batch.glossary));
+    },
+    async terms(batch) {
+      return perItem(batch.items, async (item) => mockTermsOne({ ...item, locale: batch.locale }));
     },
   };
 }

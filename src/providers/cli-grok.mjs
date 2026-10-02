@@ -22,7 +22,8 @@ import {
   parseJudgeJson,
   parseCompareJson,
 } from "./judge-schema.mjs";
-import { comparePrompt } from "./prompts.mjs";
+import { comparePrompt, termsPrompt } from "./prompts.mjs";
+import { TERMS_OUTPUT_SCHEMA, parseTermsJson } from "./terms-schema.mjs";
 import { ICU_PRESERVE_PROMPT } from "../icu.mjs";
 import { glossaryPromptBlock } from "../glossary.mjs";
 
@@ -32,7 +33,7 @@ function cliBin(models) {
   return process.env.GROK_CLI_BIN || (models || loadModelsConfig()).cli.grok.bin;
 }
 
-const STAGE_SUFFIX = { judge: "JUDGE", compare: "JUDGE", backtranslate: "BT", translate: "TRANSLATE" };
+const STAGE_SUFFIX = { judge: "JUDGE", compare: "JUDGE", terms: "JUDGE", backtranslate: "BT", translate: "TRANSLATE" };
 
 function grokTimeoutMs(stage) {
   const raw =
@@ -167,6 +168,17 @@ export async function cliGrokCompare({ key, source, options, locale, glossary },
   return parseCompareJson(out, { provider: PROVIDER_ID, key, labels, allowRegexSalvage: false });
 }
 
+export async function cliGrokTerms({ key, source, candidate, locale }, ctx, adapterOpts = {}) {
+  const { system, prompt } = termsPrompt({ locale, source, candidate });
+  const out = await invokeGrok(`${system}\n\n${prompt}`, {
+    jsonSchema: TERMS_OUTPUT_SCHEMA,
+    stage: "terms",
+    ctx,
+    models: adapterOpts.models,
+  });
+  return parseTermsJson(out, { provider: PROVIDER_ID, key, allowRegexSalvage: false });
+}
+
 /** Batch adapter (one CLI process per item). */
 export function createGrokAdapter(opts = {}) {
   return {
@@ -194,6 +206,9 @@ export function createGrokAdapter(opts = {}) {
     },
     compare(batch, ctx) {
       return perItem(batch.items, (it) => cliGrokCompare({ ...it, locale: batch.locale, glossary: batch.glossary }, ctx, opts));
+    },
+    terms(batch, ctx) {
+      return perItem(batch.items, (it) => cliGrokTerms({ ...it, locale: batch.locale }, ctx, opts));
     },
   };
 }

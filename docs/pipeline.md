@@ -9,7 +9,7 @@ check and is **accepted into output** (`accepted.json`), or it is escalated to a
 | # | Step | What runs | Where |
 |---|------|-----------|-------|
 | 1 | **Detect the delta** | `council diff`, or `run --target`, finds keys that are missing or identical to the source | `src/catalog.mjs` |
-| 2 | **Glossary-aware translate** | The translate provider gets the glossary block (approved terms and rejected terms with reasons) | `src/pipeline/translate.mjs` |
+| 2 | **Glossary-aware translate** | The translate provider gets the glossary entries the string uses (approved terms and rejected terms with reasons) | `src/pipeline/translate.mjs`, `src/glossary.mjs` |
 | 3 | **Structure checks** | Protected tokens (`{{name}}`, `{name}`, `%s`) and ICU MessageFormat structure (see below) | `src/catalog.mjs`, `src/icu.mjs` |
 | 4 | **Blind back-translation** | A different provider renders the candidate back into English. It never sees the source | `src/pipeline/backtranslate.mjs` |
 | 5 | **Scored judge** | Meaning (source vs. back-translation), fluency, and glossary compliance, as strict JSON | `src/pipeline/judge.mjs` |
@@ -18,14 +18,18 @@ check and is **accepted into output** (`accepted.json`), or it is escalated to a
 
 Merging accepted strings into the product catalog is outside the pipeline. A person does it.
 
+Once strings ship, `council glossary harvest` proposes glossary entries for recurring terms the
+glossary doesn't cover yet, and a person decides them ([glossary.md](glossary.md)).
+
 ## Not in the pipeline
 
 - **Domain research.** Nothing studies the product or its users before translating. The glossary and
   the catalog are the only context.
 - **A separate semantic-drift stage.** Drift is measured once, by the judge: it scores the meaning
   of the blind back-translation against the source (step 5). No independent drift check runs.
-- **Glossary generation.** The glossary is an input you write (`--glossary`). The council enforces
-  it but doesn't propose terms.
+- **A starter glossary for a new locale.** The council grows a glossary from strings that shipped
+  (`council glossary harvest`), but nothing proposes entries for a locale that hasn't shipped any
+  strings yet. Until then, a person writes the first entries.
 
 These are roadmap items ([backlog.md](backlog.md#roadmap)).
 
@@ -49,27 +53,31 @@ Precedence: `--mock` > `--provider` > `--profile` > `COUNCIL_PROFILE` > `COUNCIL
 
 ## Provider contract
 
-Every adapter implements four batch methods ([`src/providers/contract.mjs`](../src/providers/contract.mjs)):
+Every adapter implements five batch methods ([`src/providers/contract.mjs`](../src/providers/contract.mjs)):
 
 | Method | Input items | Output per item |
 |--------|-------------|-----------------|
 | `translate` | `{ key, source }` + locale + glossary | `candidate` |
 | `backtranslate` | `{ key, candidate }` + locale (never the source) | `backtranslation` |
 | `judge` | `{ key, source, candidate, backtranslation }` + glossary | `meaning`, `fluency`, `glossaryOk`, `escalate`, `rationale` |
-| `compare` | `{ key, source, options: { X, Y, … } }` | `pick` (a label or none), `rationale` |
+| `compare` | `{ key, source, options: { X, Y, … } }` + glossary | `pick` (a label or none), `rationale` |
+| `terms` | `{ key, source, candidate }` + locale (no glossary) | `terms: [{ source, target, base, productMeaning }]` (glossary harvest) |
+
+"+ glossary" means the entries the item's English uses (`glossarySlice`), not the whole file.
 
 Output is normalized and validated against
 [`schemas/stage-results.v1.json`](../schemas/stage-results.v1.json). A missing row, an empty
 string, an out-of-range score, or a pick outside the labels is a **missing verdict**, which is an
 error and never a pass. A stage an adapter can't run (for example `translate` on `api:jev`)
-throws `UnsupportedStageError`. `test/contract.test.mjs` runs every adapter through all four
+throws `UnsupportedStageError`. `test/contract.test.mjs` runs every adapter through all five
 methods against recorded fixtures and fake CLIs.
 
 ## Caching and reproducibility
 
 - **Cache.** Each result is cached under `<out>/.cache/<stage>.json`, keyed on the stage, provider,
   model, prompt version, adapter settings (for example Claude's effort level), the CLI's version for
-  CLI providers, locale, glossary content hash, catalog key, and inputs. Rerunning the same command
+  CLI providers, locale, the content of the glossary entries the string uses, catalog key, and
+  inputs. A new or edited glossary entry re-runs only the strings that contain its term. Rerunning the same command
   skips finished work, including after a crash. `--no-cache` turns it off and `--cache-dir` moves it.
   A CLI whose default model changes without a new CLI version (Grok, or Codex without
   `CODEX_MODEL`) needs `--no-cache` once.

@@ -1,7 +1,29 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { validateGlossary, glossaryPromptBlock } from "../src/glossary.mjs";
+import {
+  validateGlossary,
+  glossaryPromptBlock,
+  sourceHasTerm,
+  sameTerm,
+  glossarySlice,
+  findRejectedTerms,
+} from "../src/glossary.mjs";
+
+const TOY_GLOSSARY = JSON.parse(readFileSync(new URL("../fixtures/toy/glossary.de.json", import.meta.url)));
+
+function entry(over = {}) {
+  return {
+    source: "x",
+    locale: "de",
+    productMeaning: "m",
+    relatedTerms: [],
+    practitionerTerm: "p",
+    approved: true,
+    rejected: [],
+    ...over,
+  };
+}
 
 describe("validateGlossary", () => {
   it("accepts toy fixture", () => {
@@ -73,6 +95,75 @@ describe("validateGlossary", () => {
     });
     assert.match(block, /APPROVED/);
     assert.match(block, /reject "Zusammensetzung"/);
+  });
+});
+
+describe("term matching", () => {
+  it("matches whole words, hyphen/space variants and English inflections", () => {
+    const yes = [
+      ["Onion skin", "onion skin"],
+      ["Onion skinning", "onion skin"],
+      ["Onion-skin overlay", "onion skin"],
+      ["Precompose layers", "pre-compose"],
+      ["Pre-composing…", "pre-compose"],
+      ["New compositions", "composition"],
+      ["Copies", "copy"],
+      ["Rendering…", "render"],
+    ];
+    const no = [
+      ["Decomposition", "composition"],
+      ["Player", "layer"],
+      ["Renderer", "render"],
+      ["Comp settings", "composition"],
+    ];
+    for (const [text, term] of yes) assert.ok(sourceHasTerm(text, term), `${term} in ${text}`);
+    for (const [text, term] of no) assert.ok(!sourceHasTerm(text, term), `${term} not in ${text}`);
+  });
+
+  it("compares terms with each other", () => {
+    assert.ok(sameTerm("Layers", "layer"));
+    assert.ok(sameTerm("precompose", "Pre-compose"));
+    assert.ok(!sameTerm("render queue", "render"));
+  });
+
+  it("the rejected-term check no longer fires inside a longer word", () => {
+    const g = { locale: "de", entries: [entry({ source: "comp", rejected: [{ term: "Komp", why: "w" }] })] };
+    assert.equal(findRejectedTerms("Compute", "Komp", g).length, 0);
+    assert.equal(findRejectedTerms("New comp", "Neue Komp", g).length, 1);
+    assert.equal(findRejectedTerms("Onion-skin overlay", "Zwiebelschale", TOY_GLOSSARY)[0].term, "Zwiebelschale");
+  });
+});
+
+describe("glossarySlice", () => {
+  it("keeps only the entries the sources use, and never declined terms", () => {
+    const g = { ...TOY_GLOSSARY, version: "7", declined: [{ source: "play", why: "generic" }] };
+    assert.equal(glossarySlice(g, ["Add layer"]), null);
+    const s = glossarySlice(g, ["New composition", "Pre-compose"]);
+    assert.deepEqual(s.entries.map((e) => e.source), ["composition", "pre-compose"]);
+    assert.equal(s.locale, "de");
+    assert.equal("declined" in s, false);
+    assert.equal("version" in s, false);
+    assert.equal(glossarySlice(null, ["x"]), null);
+  });
+});
+
+describe("glossary growth fields", () => {
+  it("accepts declined terms and entry origins, and rejects malformed ones", () => {
+    const ok = validateGlossary({
+      schemaVersion: "0",
+      locale: "de",
+      entries: [entry({ origin: { via: "harvest", keys: ["a", "b"] } })],
+      declined: [{ source: "play", why: "Generic UI verb." }],
+    });
+    assert.equal(ok.declined.length, 1);
+    assert.throws(
+      () => validateGlossary({ schemaVersion: "0", locale: "de", entries: [], declined: [{ source: "x" }] }),
+      /declined\[0\] must be/,
+    );
+    assert.throws(
+      () => validateGlossary({ schemaVersion: "0", locale: "de", entries: [entry({ origin: { keys: [] } })] }),
+      /origin must be/,
+    );
   });
 });
 

@@ -10,6 +10,7 @@ import {
   mockBacktranslateText,
   mockJudgeOne,
   mockCompareOne,
+  mockTermsOne,
 } from "../../src/providers/mock.mjs";
 import { parseGlossaryBlock } from "../fixtures/fake-cli-lib.mjs";
 
@@ -27,6 +28,7 @@ export function answerChat(body) {
       const v = mockJudgeOne({ ...it, glossary });
       return { key: it.key, meaning: v.meaning, fluency: v.fluency, glossaryOk: v.glossaryOk, escalate: v.escalate, rationale: v.rationale };
     }
+    if (stage === "terms") return { key: it.key, terms: mockTermsOne({ ...it, locale: payload.locale }).terms };
     const c = mockCompareOne(variant, it, payload.locale, glossary);
     return { key: it.key, pick: c.pick, rationale: c.rationale };
   });

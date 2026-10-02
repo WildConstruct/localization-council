@@ -24,7 +24,7 @@ open public issues for them.
   profile, `test/fixtures/fake-*.mjs`, the local fake OpenRouter server
   (`test/helpers/fake-openrouter.mjs`), or recorded fixtures.
 - **Every adapter passes the contract test** (`test/contract.test.mjs`). A new provider implements
-  `translate`, `backtranslate`, `judge`, and `compare` over batches (`src/providers/contract.mjs`),
+  `translate`, `backtranslate`, `judge`, `compare`, and `terms` over batches (`src/providers/contract.mjs`),
   or throws `UnsupportedStageError` for stages it can't do. Add it to the contract test's list.
 - **Fail closed.** Missing or malformed provider output is an error (`MissingVerdictError`),
   never a pass.

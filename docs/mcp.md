@@ -14,13 +14,15 @@ council never merges anything into a product catalog, and escalated rows still g
 | `council_doctor` | `online?`, `profile?`, `preset?`, `modelsFile?` | `council doctor --json` (never probes CLIs over MCP) |
 | `council_diff` | `source`, `target` | `council diff --json` |
 | `council_run` | `catalog`, `locale`; optional `target`, `keys` (array), `glossary`, `out`, `profile`, `provider`, `preset`, `translateModel`, `backtranslateModel`, `judgeModel`, `meaningThreshold`, `faceoff`, `faceoffProviders`, `consensusCull`, `blindAudit`, `auditJudges`, `seed`, `noCache`, `modelsFile`, `strictDiversity` | `council run --json` |
+| `council_glossary_harvest` | `catalog`, `localeFile`, `locale`; optional `glossary`, `accepted`, `out`, `profile`, `provider`, `extractor`, `minKeys`, `noCache`, `modelsFile` | `council glossary harvest --json` ([glossary.md](glossary.md)) |
 | `council_status` | `out` | reads an existing run directory (read-only) |
 
 - **Model selection** works exactly as in the CLI. Precedence is `config/models.json < modelsFile < preset < per-stage model`. If you pass `preset` or a `*Model` argument and no `profile`/`provider` (and neither `COUNCIL_PROFILE` nor `COUNCIL_PROVIDER` is set), the `openrouter` profile is used. `COUNCIL_PRESET` in the server's environment is a default. Passing a preset or model to a mock or fleet run is a usage error.
 - **Results.** `status` is `clean`, `escalations`, or `error`. `isError` is set only for `error`, because escalations are a normal outcome. `artifacts` holds absolute paths to `candidates.json`, `backtranslations.json`, `scores.json`, `accepted.json`, `escalate.json`, `report.md`, `manifest.json`, and `run.log`. These are the same audit trail the CLI writes. `manifest.json` records `argv: ["mcp", "council_run", …]` so provenance shows the run came over MCP.
 - **Progress.** If a `tools/call` carries `_meta.progressToken`, each `run.log` line is also sent as a `notifications/progress` message.
 - **Paths.** Relative paths resolve against `COUNCIL_MCP_ROOT`, then `CLAUDE_PROJECT_DIR` (Claude Code sets it), then the server's working directory. Absolute paths are safest.
-- **Tool annotations.** Every tool except `council_run` is marked `readOnlyHint: true`, so clients that prompt only for writes (for example Codex `default_tools_approval_mode = "writes"`) ask only before a run.
+- **Tool annotations.** Every tool except `council_run` and `council_glossary_harvest` is marked `readOnlyHint: true`, so clients that prompt only for writes (for example Codex `default_tools_approval_mode = "writes"`) ask only before those. Harvest writes only under `out`, never to the glossary.
+- **No apply tool.** `council glossary apply` stays a CLI command for a person. Deciding glossary proposals isn't an agent's job.
 - **Security.** The server can read and write any path its process can, and it spends OpenRouter credit. Give it only to agents you trust, and pass keys through the environment. It never echoes environment values.
 
 ## Claude Code

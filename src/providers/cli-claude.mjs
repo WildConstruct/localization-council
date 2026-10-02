@@ -28,7 +28,8 @@ import {
   parseJudgeJson,
   parseCompareJson,
 } from "./judge-schema.mjs";
-import { comparePrompt } from "./prompts.mjs";
+import { comparePrompt, termsPrompt } from "./prompts.mjs";
+import { TERMS_OUTPUT_SCHEMA, parseTermsJson } from "./terms-schema.mjs";
 import { glossaryPromptBlock } from "../glossary.mjs";
 
 export const PROVIDER_ID = "cli:claude";
@@ -44,7 +45,7 @@ const DISALLOWED_TOOLS =
 /** Default model when env is unset (from config/models.json). */
 export const DEFAULT_CLAUDE_MODEL = loadModelsConfig().cli.claude.defaultModel;
 
-const STAGE_SUFFIX = { judge: "JUDGE", compare: "JUDGE", backtranslate: "BT", translate: "TRANSLATE" };
+const STAGE_SUFFIX = { judge: "JUDGE", compare: "JUDGE", terms: "JUDGE", backtranslate: "BT", translate: "TRANSLATE" };
 
 function stageEnv(prefix, stage, suffix) {
   return process.env[`${prefix}_${STAGE_SUFFIX[stage] || "TRANSLATE"}_${suffix}`] || process.env[`${prefix}_${suffix}`];
@@ -64,7 +65,7 @@ function claudeTimeoutMs(stage) {
     const n = Number(raw);
     if (Number.isFinite(n) && n > 0) return n;
   }
-  return stage === "judge" || stage === "compare" ? 300_000 : 180_000;
+  return stage === "judge" || stage === "compare" || stage === "terms" ? 300_000 : 180_000;
 }
 
 async function invokeClaude(prompt, { system, jsonSchema, stage = "translate", ctx, models } = {}) {
@@ -205,6 +206,18 @@ export async function cliClaudeCompare({ key, source, options, locale, glossary 
   return { ...parseCompareJson(out, { provider: PROVIDER_ID, key, labels, allowRegexSalvage: true }), model };
 }
 
+export async function cliClaudeTerms({ key, source, candidate, locale }, ctx, adapterOpts = {}) {
+  const { system, prompt } = termsPrompt({ locale, source, candidate });
+  const { text: out, model } = await invokeClaude(prompt, {
+    system,
+    jsonSchema: TERMS_OUTPUT_SCHEMA,
+    stage: "terms",
+    ctx,
+    models: adapterOpts.models,
+  });
+  return { ...parseTermsJson(out, { provider: PROVIDER_ID, key, allowRegexSalvage: true }), model: model || null };
+}
+
 /** Batch adapter (one CLI process per item). */
 export function createClaudeAdapter(opts = {}) {
   return {
@@ -238,6 +251,9 @@ export function createClaudeAdapter(opts = {}) {
     },
     compare(batch, ctx) {
       return perItem(batch.items, (it) => cliClaudeCompare({ ...it, locale: batch.locale, glossary: batch.glossary }, ctx, opts));
+    },
+    terms(batch, ctx) {
+      return perItem(batch.items, (it) => cliClaudeTerms({ ...it, locale: batch.locale }, ctx, opts));
     },
   };
 }

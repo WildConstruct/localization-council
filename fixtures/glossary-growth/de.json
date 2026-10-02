@@ -1,0 +1,18 @@
+{
+  "ui.layer.add": "Ebene hinzufügen",
+  "ui.layer.delete": "Ebene löschen",
+  "ui.layer.rename": "Ebenen umbenennen",
+  "ui.keyframe.add": "Keyframe hinzufügen",
+  "ui.keyframe.delete": "Keyframes löschen",
+  "ui.keyframe.ease": "Schlüsselbild glätten",
+  "ui.render.queue": "Zur Renderwarteschlange hinzufügen",
+  "ui.render.clear": "Renderwarteschlange leeren",
+  "ui.comp.new": "Neue Komposition",
+  "ui.comp.settings": "Kompositionseinstellungen",
+  "ui.viewport.onion": "Onion Skin",
+  "ui.viewport.fit": "An Viewport anpassen",
+  "ui.viewport.zoom": "Viewport zoomen",
+  "ui.timeline.play": "Abspielen",
+  "ui.timeline.pause": "Pause",
+  "ui.mask.path": "Maskenpfad"
+}

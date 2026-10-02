@@ -37,7 +37,7 @@ flowchart LR
 
 Translate drafts each string with your glossary and checks placeholders and ICU structure. A model from a different vendor back-translates it without seeing the English source. The judge compares that back-translation with the source and scores meaning, fluency, and glossary compliance.
 
-The optional stages run with `--faceoff --consensus-cull --blind-audit`; each winner must pass the same core checks before it reaches `accepted.json`. Not built yet: [domain research](https://github.com/WildConstruct/localization-council/issues/1), a [separate semantic-drift stage](https://github.com/WildConstruct/localization-council/issues/2), and [glossary generation](https://github.com/WildConstruct/localization-council/issues/3).
+The optional stages run with `--faceoff --consensus-cull --blind-audit`; each winner must pass the same core checks before it reaches `accepted.json`. Not built yet: [domain research](https://github.com/WildConstruct/localization-council/issues/1), a [separate semantic-drift stage](https://github.com/WildConstruct/localization-council/issues/2), and [suggesting a starter glossary for a new locale](https://github.com/WildConstruct/localization-council/issues/3).
 
 - **Accept into output:** write a candidate to `accepted.json` under `--out`.
 - **Merge:** a person moves selected strings into the product catalog. The council never merges.
@@ -129,18 +129,28 @@ Glossaries record product meaning, practitioner terminology, and rejected terms 
 
 Meaning alone would pass this row. The glossary catches the terminology problem and leaves the evidence for review.
 
+## The glossary grows as you localize
+
+`council glossary harvest` reads the strings that already shipped. It finds recurring product terms that the glossary doesn't cover yet, and how each translation rendered them. Then it proposes entries with that evidence. A person approves or declines each one, and `council glossary apply` folds the decisions into the glossary. From then on, every run uses the new entries. Each string gets only the entries it contains, and the cache re-runs only the strings an added entry touches. `council tidy` re-audits shipped strings that used a rendering the person just rejected. The council proposes and a person decides; nothing is enforced until it is in the glossary. See [docs/glossary.md](docs/glossary.md).
+
+```bash
+node src/cli.mjs glossary harvest --profile=mock --catalog fixtures/glossary-growth/en.json \
+  --locale-file fixtures/glossary-growth/de.json --locale de \
+  --glossary fixtures/glossary-growth/glossary.de.json --out scores/de-glossary
+```
+
 Adding `--faceoff --consensus-cull --blind-audit` makes the council try other providers for escalated rows, and in the mock demo it accepts "Onion Skin" once two independent candidates agree and pass every check.
 
 ## For agents and MCP
 
 The stdio MCP server exposes the same workflow. See [MCP setup](docs/mcp.md) and the operating contract in [AGENTS.md](AGENTS.md).
 
-Every subcommand accepts `--json` and prints one object matching the [summary schema](schemas/summary.v1.json). Exit codes are `0` clean, `10` escalations or tidy reopen rows, `1` error, `2` usage, and `3` doctor preflight failed.
+Every subcommand accepts `--json` and prints one object matching the [summary schema](schemas/summary.v1.json). Exit codes are `0` clean, `10` escalations, tidy reopen rows or undecided glossary proposals, `1` error, `2` usage, and `3` doctor preflight failed.
 
 ## Docs
 
 - [Pipeline internals](docs/pipeline.md) and [design notes](docs/design-notes.md)
-- [Post-escalate resolution](docs/escalate-resolution.md) and [retrospective tidy](docs/retrospective-tidy.md)
+- [Post-escalate resolution](docs/escalate-resolution.md), [retrospective tidy](docs/retrospective-tidy.md), and [growing the glossary](docs/glossary.md)
 - [Fleet CLIs](docs/fleet-cli.md), [OpenRouter](docs/openrouter.md), and [Jev decision gates](docs/jev-gates.md)
 - [Multi-repo gardens](docs/garden.md), [scheduled routines](docs/routines/scheduled-agent.md), and [CI delta checks](docs/ci-delta.md)
 - [Model bakeoff](docs/model-bakeoff.md), [results](docs/results.md), and [roadmap](docs/backlog.md)

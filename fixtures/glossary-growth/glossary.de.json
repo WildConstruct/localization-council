@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "0",
+  "locale": "de",
+  "entries": [
+    {
+      "source": "composition",
+      "locale": "de",
+      "productMeaning": "A timeline container for layers, effects, and timing — the primary edit unit.",
+      "relatedTerms": ["comp", "sequence"],
+      "practitionerTerm": "Komposition",
+      "approved": true,
+      "rejected": [
+        {
+          "term": "Zusammensetzung",
+          "why": "Sounds like chemical composition; not used by motion practitioners."
+        }
+      ]
+    },
+    {
+      "source": "onion skin",
+      "locale": "de",
+      "productMeaning": "Semi-transparent overlay of adjacent frames for frame-by-frame animation.",
+      "relatedTerms": ["Onion skinning", "ghost frames"],
+      "practitionerTerm": "Onion Skin",
+      "approved": true,
+      "rejected": [
+        {
+          "term": "Zwiebelschale",
+          "why": "Calque that confuses artists; keep English loan in UI."
+        }
+      ]
+    }
+  ],
+  "declined": [
+    {
+      "source": "viewport",
+      "why": "Standard UI word; translators already keep it as is."
+    }
+  ]
+}

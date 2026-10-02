@@ -4,7 +4,7 @@
  *
  * Exit codes:
  *   0   clean (nothing needs a human)
- *   10  escalations (run / garden) or reopen rows (tidy) exist
+ *   10  escalations (run / garden), reopen rows (tidy) or undecided glossary proposals exist
  *   1   runtime error
  *   2   usage error (bad flags)
  *   3   preflight failed (doctor: requested profile is not runnable)
@@ -71,6 +71,17 @@ const EMPTY_FIELDS = {
     costUsd: null,
   }),
   garden: () => ({ catalogs: null, walked: null, withDelta: null, results: [] }),
+  glossary: () => ({
+    action: null,
+    locale: null,
+    profile: null,
+    extractor: null,
+    outDir: null,
+    artifacts: null,
+    counts: null,
+    proposals: [],
+    costUsd: null,
+  }),
   doctor: () => ({ node: null, clis: null, keys: null, profiles: null, recommendedProfile: null }),
   version: () => ({ version: null }),
   help: () => ({ usage: null }),

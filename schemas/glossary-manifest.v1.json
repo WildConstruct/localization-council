@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WildConstruct/localization-council/schemas/glossary-manifest.v1.json",
+  "title": "Glossary harvest manifest (manifest.json under a council glossary harvest --out)",
+  "description": "What a harvest read and ran with: catalogs, the accepted.json overlay, profile, extractor and model, glossary version, min-keys threshold, counts, cost, and cache use.",
+  "type": "object",
+  "required": [
+    "schema",
+    "command",
+    "councilVersion",
+    "startedAt",
+    "finishedAt",
+    "locale",
+    "catalog",
+    "localeFile",
+    "accepted",
+    "profile",
+    "extractor",
+    "glossary",
+    "thresholds",
+    "counts",
+    "cost",
+    "cache"
+  ],
+  "properties": {
+    "schema": { "const": "council.glossary-manifest.v1" },
+    "command": { "const": "glossary harvest" },
+    "accepted": { "type": ["string", "null"] },
+    "extractor": { "type": "string" },
+    "model": { "type": ["string", "null"] },
+    "glossary": {
+      "type": ["object", "null"],
+      "required": ["path", "version", "hash", "entries"]
+    },
+    "thresholds": {
+      "type": "object",
+      "required": ["minKeys"],
+      "properties": { "minKeys": { "type": "integer", "minimum": 1 } }
+    },
+    "counts": {
+      "type": "object",
+      "required": ["pairs", "terms", "proposals", "inGlossary", "declined", "belowMinKeys", "unverified"]
+    },
+    "cost": { "type": "object", "required": ["usd", "complete"] },
+    "cache": { "type": "object", "required": ["dir", "enabled", "hits", "misses"] }
+  }
+}
