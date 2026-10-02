@@ -8,6 +8,7 @@ import {
   mockBacktranslateText,
   mockJudgeOne,
   mockCompareOne,
+  mockTermsOne,
 } from "../../src/providers/mock.mjs";
 
 function field(prompt, labels) {
@@ -50,6 +51,15 @@ export function answer({ prompt, schema, variant }) {
     const options = {};
     for (const m of prompt.matchAll(/^([XYZWVUTSRQ]): (.*)$/gm)) options[m[1]] = m[2];
     return JSON.stringify(mockCompareOne(variant, { key: "", source, options }, locale, parseGlossaryBlock(prompt)));
+  }
+  if (/"terms"/.test(schemaText) || /^Extract terminology\./m.test(prompt)) {
+    const { terms } = mockTermsOne({
+      key: "",
+      source: field(prompt, ["Source:"]),
+      candidate: field(prompt, ["Candidate:"]),
+      locale,
+    });
+    return JSON.stringify({ terms });
   }
   if (/"meaning"/.test(schemaText) || /localization judge/i.test(prompt)) {
     const v = mockJudgeOne({

@@ -101,7 +101,7 @@ export function validateJudgeParsed(parsed, { provider, key, glossary }) {
 }
 
 /** Parse CLI stdout that should be a JSON object (or contain one). */
-function parseJsonObject(out, { provider, stage, key, allowRegexSalvage }) {
+export function parseJsonObject(out, { provider, stage, key, allowRegexSalvage }) {
   const text = String(out ?? "").trim();
   if (!text) throw new MissingVerdictError(provider, stage, key, "empty output");
   let parsed;

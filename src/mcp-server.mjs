@@ -13,6 +13,7 @@ import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCouncil, diffCatalogs, ARTIFACTS } from "./index.mjs";
 import { runDoctor } from "./doctor.mjs";
+import { runGlossaryHarvest } from "./glossary-growth.mjs";
 import { loadModelsConfig, loadProfilesConfig, resolveProfile, councilVersion } from "./config.mjs";
 import { envelope, errorSummary, EXIT, UsageError } from "./summary.mjs";
 
@@ -24,7 +25,9 @@ const INSTRUCTIONS =
   "judges meaning and glossary compliance, and escalates doubtful rows to a person. It never merges " +
   "into a product catalog. Start with council_doctor or council_list_presets, use council_diff to see " +
   "the delta, then council_run. status 'escalations' (exitCode 10) is a normal outcome: hand " +
-  "artifacts.escalate and artifacts.report to a person. Runs can take minutes.";
+  "artifacts.escalate and artifacts.report to a person. Runs can take minutes. council_glossary_harvest " +
+  "proposes glossary entries from shipped strings; a person decides them and applies them with " +
+  "`council glossary apply`. Never decide or apply proposals yourself.";
 
 const str = (description) => ({ type: "string", description });
 const bool = (description) => ({ type: "boolean", description });
@@ -97,6 +100,33 @@ export const TOOLS = [
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   },
   {
+    name: "council_glossary_harvest",
+    title: "Propose glossary entries",
+    description:
+      "Find recurring product or domain terms in shipped strings that the glossary doesn't cover yet, and how the " +
+      "translations render them. Same summary as `council glossary harvest --json`: status 'proposals' (exitCode 10) " +
+      "means artifacts.report and artifacts.proposals go to a person, who decides each one and runs `council glossary " +
+      "apply`. Never fill in decisions or apply them yourself. Writes only under out; never edits the glossary.",
+    inputSchema: obj(
+      {
+        catalog: str("English source catalog JSON path."),
+        localeFile: str("Shipped locale catalog JSON path."),
+        locale: str("Locale tag of localeFile, e.g. de."),
+        glossary: str("The product's glossary JSON path (proposals skip terms it already has or declined)."),
+        accepted: str("A run's accepted.json, for strings accepted into output but not merged yet."),
+        out: str("Output directory (default scores/<locale>-glossary). A re-harvest into the same directory keeps a person's decisions."),
+        profile: str("Execution profile: fleet | openrouter | mock."),
+        provider: str("Advanced provider spec or stage map."),
+        extractor: str("Provider that extracts terms (default: the profile's judge)."),
+        minKeys: { type: "integer", description: "Propose a term once it appears in this many keys (default 2)." },
+        noCache: bool("Disable the result cache."),
+        modelsFile: str("Optional models override JSON."),
+      },
+      ["catalog", "localeFile", "locale"],
+    ),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  },
+  {
     name: "council_status",
     title: "Read a run directory",
     description: "Summarize an existing run output directory (manifest, accepted, escalations) and list the artifact paths that exist. Read-only.",
@@ -105,7 +135,14 @@ export const TOOLS = [
   },
 ];
 
-const COMMAND_OF = { council_list_presets: "presets", council_doctor: "doctor", council_diff: "diff", council_run: "run", council_status: "run" };
+const COMMAND_OF = {
+  council_list_presets: "presets",
+  council_doctor: "doctor",
+  council_diff: "diff",
+  council_run: "run",
+  council_status: "run",
+  council_glossary_harvest: "glossary",
+};
 
 function validateArguments(tool, args) {
   if (!args || typeof args !== "object" || Array.isArray(args)) throw new UsageError(`${tool.name} arguments must be an object`);
@@ -195,8 +232,8 @@ async function statusSummary(args, at) {
 }
 
 /** Provenance for manifest.json: which MCP tool and arguments produced the run (values, never env). */
-function mcpArgv(args) {
-  const argv = ["mcp", "council_run"];
+function mcpArgv(args, tool = "council_run") {
+  const argv = ["mcp", tool];
   for (const [key, value] of Object.entries(args)) {
     if (value == null || value === false) continue;
     if (value === true) argv.push(`--${key}`);
@@ -273,6 +310,27 @@ export function createServer({ stdin = process.stdin, stdout = process.stdout, s
         const delta = d.missing.length + d.untranslated.length;
         return toolResult(envelope("diff", { status: delta ? "delta" : "clean", exitCode: EXIT.CLEAN, delta, ...d }));
       }
+      if (name === "council_glossary_harvest") {
+        return toolResult(
+          await runGlossaryHarvest({
+            catalog: at(args.catalog),
+            localeFile: at(args.localeFile),
+            locale: args.locale,
+            glossary: at(args.glossary),
+            accepted: at(args.accepted),
+            out: at(args.out),
+            profile: args.profile,
+            provider: args.provider,
+            extractor: args.extractor,
+            minKeys: args.minKeys,
+            preset: env.COUNCIL_PRESET || null,
+            presetSource: env.COUNCIL_PRESET ? "env" : null,
+            cache: !args.noCache,
+            modelsFile: at(args.modelsFile),
+            argv: mcpArgv(args, "council_glossary_harvest"),
+          }),
+        );
+      }
       // council_run
       const token = meta?.progressToken;
       let progress = 0;
@@ -280,7 +338,9 @@ export function createServer({ stdin = process.stdin, stdout = process.stdout, s
       return toolResult(await run(runOptions(args, { at, env, onLog })));
     } catch (e) {
       if (!(e instanceof UsageError)) stderr.write(`council-mcp: ${name}: ${e?.stack || e}\n`);
-      return toolResult(errorSummary(COMMAND_OF[name] || "run", e));
+      const summary = errorSummary(COMMAND_OF[name] || "run", e);
+      if (name === "council_glossary_harvest") summary.action = "harvest";
+      return toolResult(summary);
     }
   }
 

@@ -1,7 +1,7 @@
 {
   "name": "localization-council",
   "version": "0.2.0",
-  "description": "Localization evaluation harness: glossary-aware translation (you supply the glossary), blind back-translation, a scored judge, and human escalation. Runs on local CLIs, one OpenRouter key, or offline.",
+  "description": "Localization evaluation harness: glossary-aware translation (you own the glossary; the council proposes additions from what ships), blind back-translation, a scored judge, and human escalation. Runs on local CLIs, one OpenRouter key, or offline.",
   "type": "module",
   "bin": {
     "council": "./src/cli.mjs",

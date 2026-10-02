@@ -31,7 +31,8 @@ import {
   parseJudgeJson,
   parseCompareJson,
 } from "./judge-schema.mjs";
-import { comparePrompt } from "./prompts.mjs";
+import { comparePrompt, termsPrompt, PROMPT_VERSION } from "./prompts.mjs";
+import { TERMS_OUTPUT_SCHEMA, parseTermsJson } from "./terms-schema.mjs";
 import { glossaryPromptBlock } from "../glossary.mjs";
 
 export const PROVIDER_ID = "cli:codex";
@@ -43,7 +44,7 @@ function cliBin(models) {
   return process.env.CODEX_CLI_BIN || (models || loadModelsConfig()).cli.codex.bin;
 }
 
-const STAGE_SUFFIX = { judge: "JUDGE", compare: "JUDGE", backtranslate: "BT", translate: "TRANSLATE" };
+const STAGE_SUFFIX = { judge: "JUDGE", compare: "JUDGE", terms: "JUDGE", backtranslate: "BT", translate: "TRANSLATE" };
 
 function stageEnv(stage, suffix) {
   return process.env[`CODEX_${STAGE_SUFFIX[stage] || "TRANSLATE"}_${suffix}`] || process.env[`CODEX_${suffix}`];
@@ -59,7 +60,7 @@ function codexTimeoutMs(stage) {
     const n = Number(raw);
     if (Number.isFinite(n) && n > 0) return n;
   }
-  return stage === "judge" || stage === "compare" ? 300_000 : 180_000;
+  return stage === "judge" || stage === "compare" || stage === "terms" ? 300_000 : 180_000;
 }
 
 async function invokeCodex(prompt, { schema, stage = "translate", ctx, models } = {}) {
@@ -206,6 +207,17 @@ export async function cliCodexCompare({ key, source, options, locale, glossary }
   return { ...parseCompareJson(out, { provider: PROVIDER_ID, key, labels, allowRegexSalvage: true }), model };
 }
 
+export async function cliCodexTerms({ key, source, candidate, locale }, ctx, adapterOpts = {}) {
+  const { system, prompt } = termsPrompt({ locale, source, candidate });
+  const { text: out, model } = await invokeCodex(`${system}\n\n${prompt}`, {
+    schema: TERMS_OUTPUT_SCHEMA,
+    stage: "terms",
+    ctx,
+    models: adapterOpts.models,
+  });
+  return { ...parseTermsJson(out, { provider: PROVIDER_ID, key, allowRegexSalvage: true }), model: model || null };
+}
+
 /** Batch adapter (one `codex exec` per item). */
 export function createCodexAdapter(opts = {}) {
   return {
@@ -216,7 +228,7 @@ export function createCodexAdapter(opts = {}) {
         provider: PROVIDER_ID,
         model: codexModel(stage, opts.models) || "cli-default",
         family: "openai",
-        promptVersion: `cli-codex/${stage}@1`,
+        promptVersion: `cli-codex/${stage}@${stage === "terms" ? PROMPT_VERSION.terms : 1}`,
       };
     },
     batchSize() {
@@ -238,6 +250,9 @@ export function createCodexAdapter(opts = {}) {
     },
     compare(batch, ctx) {
       return perItem(batch.items, (it) => cliCodexCompare({ ...it, locale: batch.locale, glossary: batch.glossary }, ctx, opts));
+    },
+    terms(batch, ctx) {
+      return perItem(batch.items, (it) => cliCodexTerms({ ...it, locale: batch.locale }, ctx, opts));
     },
   };
 }

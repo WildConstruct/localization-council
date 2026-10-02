@@ -55,6 +55,31 @@
         "model": { "$ref": "#/$defs/model" },
         "abstainReasons": { "type": "array", "items": { "type": "string" } }
       }
+    },
+    "terms": {
+      "type": "object",
+      "required": ["key", "locale", "source", "candidate", "terms", "provider", "model"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "locale": { "type": "string", "minLength": 1 },
+        "source": { "type": "string" },
+        "candidate": { "type": "string" },
+        "terms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "target", "base", "productMeaning"],
+            "properties": {
+              "source": { "type": "string" },
+              "target": { "type": "string" },
+              "base": { "type": "string" },
+              "productMeaning": { "type": "string" }
+            }
+          }
+        },
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "$ref": "#/$defs/model" }
+      }
     }
   }
 }

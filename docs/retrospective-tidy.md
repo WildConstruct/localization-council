@@ -67,7 +67,8 @@ Under `--out` (default `./scores/<locale>-tidy`):
 
 1. Locales with dense practitioner vocabulary and an active reviewer.
 2. Right-to-left locales (he, ar), where UI-role and register slips are common.
-3. Keys with glossary terms, after the glossary changes.
+3. Keys with glossary terms, after the glossary changes. `council glossary apply` writes
+   `affected-keys.json` for exactly these; pass it as `--keys-file` ([glossary.md](glossary.md)).
 4. Skip locales that are all green unless a spot-check fails.
 
 Agent recipe: [skills/retrospective-tidy/SKILL.md](../skills/retrospective-tidy/SKILL.md).

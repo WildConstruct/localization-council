@@ -13,7 +13,7 @@
  *   JEV_DECISIONS_URL   — optional endpoint override
  */
 
-import { glossaryPromptBlock } from "../glossary.mjs";
+import { glossaryPromptBlock, glossarySlice } from "../glossary.mjs";
 import { loadModelsConfig } from "../config.mjs";
 import { resolveOpenRouterApiKey as envKey } from "./openrouter.mjs";
 import { perItem, unsupported } from "./contract.mjs";
@@ -152,7 +152,7 @@ export function buildJevJudgeState({
     backtranslation: backtranslation ?? "",
   };
   if (key != null && key !== "") state.key = key;
-  const notes = glossaryPromptBlock(glossary);
+  const notes = glossaryPromptBlock(glossarySlice(glossary, [source ?? ""]));
   if (notes) state.glossary_notes = notes;
   if (icuOk !== undefined && icuOk !== null) state.icuOk = Boolean(icuOk);
   if (Array.isArray(icuMissing) && icuMissing.length) {
@@ -474,7 +474,7 @@ export async function jevCompare({ key, source, options, locale, glossary }, opt
     en: source,
     locale,
     candidates: options,
-    glossary_notes: glossaryPromptBlock(glossary) || undefined,
+    glossary_notes: glossaryPromptBlock(glossarySlice(glossary, [source ?? ""])) || undefined,
   };
   const ids = Object.keys(options);
   const json = await jevDecide(buildFaceoffState(row, ids), buildFaceoffQuestions(row, ids), opts);
@@ -526,6 +526,7 @@ export function createJevAdapter(opts = {}) {
     },
     translate: unsupported(JEV_PROVIDER_ID, "translate", hint),
     backtranslate: unsupported(JEV_PROVIDER_ID, "backtranslate", hint),
+    terms: unsupported(JEV_PROVIDER_ID, "terms", "use a translating provider to extract terms, e.g. --extractor openrouter"),
     judge(batch, ctx) {
       return perItem(batch.items, (it) =>
         jevOpenRouterJudge({ ...it, locale: batch.locale, glossary: batch.glossary }, { ...opts, ctx }),

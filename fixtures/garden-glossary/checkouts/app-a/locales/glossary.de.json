@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "0",
+  "locale": "de",
+  "entries": [
+    {
+      "source": "keyframe",
+      "locale": "de",
+      "productMeaning": "A stored property value at a point on the timeline.",
+      "relatedTerms": [],
+      "practitionerTerm": "Keyframe",
+      "approved": true,
+      "rejected": [
+        { "term": "Schlüsselbild", "why": "Animators say Keyframe; Schlüsselbild reads as a still image." }
+      ]
+    },
+    {
+      "source": "layer",
+      "locale": "de",
+      "productMeaning": "One track in a composition.",
+      "relatedTerms": [],
+      "practitionerTerm": "Ebene",
+      "approved": true,
+      "rejected": []
+    },
+    {
+      "source": "onion skin",
+      "locale": "de",
+      "productMeaning": "Semi-transparent overlay of adjacent frames.",
+      "relatedTerms": ["ghost frames"],
+      "practitionerTerm": "Onion Skin",
+      "approved": true,
+      "rejected": [
+        { "term": "Zwiebelschale", "why": "Calque that confuses artists; keep the English loan." }
+      ]
+    },
+    {
+      "source": "mask path",
+      "locale": "de",
+      "productMeaning": "The outline of a mask.",
+      "relatedTerms": [],
+      "practitionerTerm": "Maskenpfad",
+      "approved": true,
+      "rejected": []
+    }
+  ]
+}

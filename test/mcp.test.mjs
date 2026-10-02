@@ -68,7 +68,7 @@ test("MCP protocol and offline tools", async (t) => {
   assert.equal(c.messages.length, before);
   assert.deepEqual((await c.request("ping")).result, {});
   const listed = (await c.request("tools/list")).result.tools;
-  assert.deepEqual(listed.map((x) => x.name), ["council_list_presets", "council_doctor", "council_diff", "council_run", "council_status"]);
+  assert.deepEqual(listed.map((x) => x.name), ["council_list_presets", "council_doctor", "council_diff", "council_run", "council_glossary_harvest", "council_status"]);
   assert.ok(listed.every((x) => x.inputSchema?.type === "object"));
   assert.equal((await c.request("no/such/method")).error.code, -32601);
   c.send("{bad json");
@@ -182,8 +182,31 @@ test("MCP in-process: initialize, tool annotations, and schemas", async (t) => {
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.equal(typeof tool.annotations.readOnlyHint, "boolean");
   }
-  assert.equal(tools.find((x) => x.name === "council_run").annotations.readOnlyHint, false);
-  assert.ok(tools.filter((x) => x.name !== "council_run").every((x) => x.annotations.readOnlyHint));
+  const writers = ["council_run", "council_glossary_harvest"];
+  for (const name of writers) assert.equal(tools.find((x) => x.name === name).annotations.readOnlyHint, false);
+  assert.ok(tools.filter((x) => !writers.includes(x.name)).every((x) => x.annotations.readOnlyHint));
+  assert.ok(!tools.some((x) => /apply/.test(x.name)), "applying proposals is a person's job, not a tool");
+});
+
+test("MCP in-process: council_glossary_harvest proposes entries and never edits the glossary", async (t) => {
+  const c = inProcess();
+  const out = await mkdtemp(join(tmpdir(), "council-mcp-gloss-"));
+  t.after(async () => { c.close(); await rm(out, { recursive: true, force: true }); });
+  const glossary = "fixtures/glossary-growth/glossary.de.json";
+  const before = await readFile(join(ROOT, glossary), "utf8");
+  const reply = await c.request("tools/call", {
+    name: "council_glossary_harvest",
+    arguments: { catalog: "fixtures/glossary-growth/en.json", localeFile: "fixtures/glossary-growth/de.json", locale: "de", glossary, profile: "mock", out },
+  });
+  const s = reply.result.structuredContent;
+  assertSummary(s);
+  assert.equal(s.status, "proposals");
+  assert.equal(s.exitCode, 10);
+  assert.deepEqual(s.proposals.map((p) => p.source), ["keyframe", "layer", "render queue"]);
+  assert.equal(await readFile(join(ROOT, glossary), "utf8"), before);
+  const bad = (await c.request("tools/call", { name: "council_glossary_harvest", arguments: { catalog: "x" } })).result;
+  assert.equal(bad.isError, true);
+  assert.equal(bad.structuredContent.action, "harvest");
 });
 
 test("MCP in-process: notifications and invalid messages", async (t) => {

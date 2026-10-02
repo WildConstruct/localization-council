@@ -15,12 +15,20 @@ Council on a product's catalogs or **work on** this repository. `CLAUDE.md` poin
 4. **No secrets in files.** Keys come from the environment (`OPENROUTER_API_KEY`) or the CLIs'
    own logins. Never write them to disk, logs, or messages.
 5. **Model IDs live in `config/models.json`.** Don't hardcode model IDs elsewhere.
+6. **The glossary belongs to the product.** Harvest proposals and hand them to a person. Never fill
+   in a proposal's `decision`, never run `council glossary apply --write`, and never edit a glossary
+   file yourself.
+7. **Keep a product's data out of this repository.** Never commit or open a pull request to
+   localization-council with a product's glossary, catalogs, proposals, term inventory, or run output.
+   Write output to the product's repo, the team's own store, or `scores/` or `local/` (both ignored).
+   A summary warning `inside_council_checkout` means the output path is somewhere it could be committed.
 
 ## Running the council
 
 Scope: the council translates, blind back-translates, judges, and escalates. It doesn't research the
-domain, run a separate drift check, or write glossaries, so don't claim it did in PRs or reports. If
-a locale has no glossary, say so and ask a person for one. Don't invent one.
+domain or run a separate drift check, and it doesn't write glossaries. It proposes glossary entries
+from shipped strings, and a person decides them. Don't claim more in PRs or reports. If a locale has
+no glossary, say so. A harvest can give the person a starting point, but don't invent entries.
 
 ### 1. Preflight
 
@@ -160,6 +168,39 @@ Tell the person that nothing was merged. They decide what goes into the catalog.
 `SUMMARY.md` and the reopen rows, and don't change the catalog. See
 [docs/retrospective-tidy.md](docs/retrospective-tidy.md).
 
+### Growing the glossary
+
+As strings ship, run `council glossary harvest` so the product's glossary keeps up
+([docs/glossary.md](docs/glossary.md)):
+
+```bash
+council glossary harvest --catalog <repo>/locales/en.json --locale-file <repo>/locales/de.json \
+  --glossary <repo>/locales/glossary.de.json --locale de --profile fleet \
+  --out scores/de-glossary --json        # add --accepted scores/de/accepted.json after a run
+```
+
+Exit `0` (`clean`) means nothing new; stay quiet. Exit `10` (`proposals`) means recurring terms in
+shipped strings have no glossary entry. Hand the person `PROPOSALS.md` and `glossary-proposals.json`:
+
+```
+Glossary (de): 3 recurring terms have no entry yet.
+  keyframe → Keyframe (3 keys; renderings disagree: Keyframe, Schlüsselbild)
+  layer → Ebene (3 keys)
+  render queue → Renderwarteschlange (2 keys)
+Decide in scores/de-glossary/glossary-proposals.json, then run `council glossary apply`.
+```
+
+The person decides and applies. After they do, `affected-keys.json` feeds `council tidy
+--keys-file` to re-audit shipped strings that use the new terms. Harvest into the same `--out`
+each time, so their decisions carry over.
+
+Across apps, `--reference <other app's glossary>` pre-fills proposals with the other app's approved
+term and rejects. Run `council garden --mode glossary --manifest … --json` to sweep a whole garden
+the same way. Exit `10` means some catalog has proposals, and `GLOSSARY.md` summarizes them along with
+terms two apps approved differently. The sweep also writes a term inventory (`inventory.json`,
+`.csv`, `.sql`). Load it into a team's database or Notion only if a person set that up; the council
+itself never connects to either.
+
 ### Scheduled routines
 
 For a nightly or garden-wide routine, follow [docs/routines/scheduled-agent.md](docs/routines/scheduled-agent.md).
@@ -171,8 +212,11 @@ For a nightly or garden-wide routine, follow [docs/routines/scheduled-agent.md](
 - Live checks are optional: `npm run smoke:openrouter` and `npm run smoke:fleet`. Each skips cleanly
   when its key or CLIs are missing.
 - There are zero runtime dependencies. Keep it that way unless a dependency clearly pays for itself.
-- Every adapter implements `translate`, `backtranslate`, `judge`, and `compare` over batches
-  (`src/providers/contract.mjs`) and must pass `test/contract.test.mjs`.
+- Every adapter implements `translate`, `backtranslate`, `judge`, `compare`, and `terms` over batches
+  (`src/providers/contract.mjs`) and must pass `test/contract.test.mjs`. A stage it can't run throws
+  `UnsupportedStageError` (Jev only judges and compares).
+- Providers get only the glossary entries a string uses (`glossarySlice` in `src/glossary.mjs`), and
+  the cache keys on that slice. Keep it that way, so a growing glossary stays cheap.
 - Put model IDs and minimum CLI versions in `config/models.json`. Put profiles in `config/profiles.json`.
 - If you change a prompt, bump its version (`src/providers/prompts.mjs` or the adapter's
   `promptVersion`) so stale cache entries aren't reused.

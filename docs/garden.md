@@ -5,9 +5,14 @@ each pair it diffs source and target, runs the council only on the delta, stays 
 everything is clean, and hands a person the escalations. The routine is described in
 [routines/scheduled-agent.md](routines/scheduled-agent.md).
 
-`council garden` does the walking and diffing. Today it's **dry-diff only**: it reports which
-catalog pairs have a delta and calls no providers. The routine then runs `council run` for each
-delta row.
+`council garden` does the walking. It has two modes:
+
+- `--mode dry-diff` (the default) reports which catalog pairs have a delta and calls no providers.
+  The routine then runs `council run` for each delta row.
+- `--mode glossary` discovers what belongs in each app's glossary. It harvests every catalog, uses
+  the other catalogs' glossaries for the same locale to pre-fill proposals, and writes a term
+  inventory you can keep in a repo, SQLite, Postgres (Neon) or Notion. See
+  [glossary.md](glossary.md#sweep-a-garden).
 
 ```bash
 council garden --manifest examples/garden.example.json --root ~/checkouts --json
@@ -47,7 +52,7 @@ means some catalog paths weren't found under `--root`. `errors[]` names them.
 | `id` | A stable name for the catalog (e.g. `common`, `docs-hub`) |
 | `source` / `target` | Paths relative to the repo checkout (absolute paths also work) |
 | `locale` | BCP 47 tag passed to `council run --locale` |
-| `glossary` | Optional glossary path |
+| `glossary` | Optional glossary path. In `--mode glossary`, a declared path that doesn't exist yet is where `council glossary apply` starts one |
 
 Relative paths are tried as `<root>/<repo-name>/<path>`, then `<root>/<path>`, then relative to the
 current directory. The first one that exists wins.

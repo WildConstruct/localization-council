@@ -79,7 +79,7 @@ error.
 
 ## What each call does
 
-- **Batching.** Items per request come from `openrouter.batchSize` (translate/back-translate 20,
+- **Batching.** Items per request come from `openrouter.batchSize` (translate/back-translate/terms 20,
   judge/compare 5 by default; `OPENROUTER_BATCH_SIZE` overrides). Judges get smaller batches so
   one item's score doesn't anchor the next.
 - **JSON output.** Each request uses `response_format: json_schema` with the stage schema from

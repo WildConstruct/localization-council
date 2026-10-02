@@ -12,6 +12,7 @@
  *     backtranslate(batch, ctx) → Promise<object[]>
  *     judge(batch, ctx)         → Promise<object[]>
  *     compare(batch, ctx)       → Promise<object[]>   // blind comparative pick
+ *     terms(batch, ctx)         → Promise<object[]>   // terminology in a shipped pair (glossary harvest)
  *   }
  *
  * Batches:
@@ -19,6 +20,7 @@
  *   backtranslate: { locale, items: [{ key, candidate }] }          // never the source
  *   judge:         { locale, glossary, items: [{ key, source, candidate, backtranslation }] }
  *   compare:       { locale, glossary, items: [{ key, source, options: { X: text, … } }] }
+ *   terms:         { locale, items: [{ key, source, candidate }] }   // no glossary
  *
  * Adapters return raw per-item rows keyed by `key`; `normalizeStageResults`
  * turns them into the shapes in schemas/stage-results.v1.json and fails loudly
@@ -28,7 +30,7 @@
 
 import { validateDef } from "../json-schema.mjs";
 
-export const STAGES = Object.freeze(["translate", "backtranslate", "judge", "compare"]);
+export const STAGES = Object.freeze(["translate", "backtranslate", "judge", "compare", "terms"]);
 
 export class UnsupportedStageError extends Error {
   constructor(provider, stage, hint = "") {
@@ -140,6 +142,9 @@ function shapeRow(stage, batch, item, r, desc) {
     const row = { ...base, pick: pick ?? null, rationale: String(r.rationale ?? "") };
     if (Array.isArray(r.abstainReasons)) row.abstainReasons = r.abstainReasons;
     return row;
+  }
+  if (stage === "terms") {
+    return { ...base, locale: batch.locale, source: item.source, candidate: item.candidate, terms: r.terms };
   }
   throw new Error(`Unknown stage "${stage}"`);
 }

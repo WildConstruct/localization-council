@@ -80,16 +80,42 @@ describe("runCouncil (mock profile)", () => {
     assert.equal(fresh.counts.cacheHits, 0);
   });
 
-  it("the cache key includes the glossary version", async () => {
+  it("a glossary none of whose entries apply re-runs nothing", async () => {
+    const out = tmp("gnone");
+    await runCouncil({ ...base, glossary: undefined, out });
+    const g = { schemaVersion: "0", locale: "de", entries: [{ ...readJson(base.glossary).entries[0], source: "zebra", relatedTerms: [] }] };
+    const gPath = join(out, "glossary.zebra.json");
+    writeFileSync(gPath, JSON.stringify(g));
+    assert.equal((await runCouncil({ ...base, glossary: gPath, out })).counts.cacheHits, 60);
+  });
+
+  it("the cache key covers only the glossary entries a string uses", async () => {
     const out = tmp("gv");
     await runCouncil({ ...base, out });
     const g = readJson(base.glossary);
     g.version = "2";
     const gPath = join(out, "glossary.v2.json");
     writeFileSync(gPath, JSON.stringify(g));
+    // A version bump alone changes no entry, so nothing re-runs.
+    assert.equal((await runCouncil({ ...base, glossary: gPath, out })).counts.cacheHits, 60);
+
+    // An edited entry and a new entry re-run translate + judge for the strings that use them only
+    // ("Onion skin" and "Add layer"); blind back-translation never sees the glossary.
+    g.entries.find((e) => e.source === "onion skin").rejected.push({ term: "Zwiebelhaut", why: "Another calque." });
+    g.entries.push({
+      source: "layer",
+      locale: "de",
+      productMeaning: "One track in a composition.",
+      relatedTerms: [],
+      practitionerTerm: "Ebene",
+      approved: true,
+      rejected: [],
+    });
+    writeFileSync(gPath, JSON.stringify(g));
     const s = await runCouncil({ ...base, glossary: gPath, out });
-    // translate + judge see the glossary; blind back-translation does not
-    assert.equal(s.counts.cacheHits, 20);
+    assert.equal(s.counts.cacheHits, 56);
+    const manifest = readJson(join(out, "manifest.json"));
+    assert.deepEqual(manifest.cache.misses, { translate: 2, judge: 2 });
   });
 
   it("--meaning-threshold changes what escalates", async () => {

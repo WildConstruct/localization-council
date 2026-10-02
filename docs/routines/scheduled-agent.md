@@ -71,9 +71,20 @@ catalogs rarely change on weekends.
 - Never merge, approve, or push translations to a product branch. A person merges.
 - Never write into product catalogs, even with strings from `accepted.json`.
 - Never lower thresholds, swap judges, or edit glossaries to make escalations go away.
+- Never decide glossary proposals or run `council glossary apply --write`. A person does.
 - Never promote a deferred locale on your own. A person moves it into `localeTiers.active`.
 
 ## Optional extras
+
+- **Weekly glossary sweep.** Run `council garden --mode glossary --manifest <file> --root <checkouts>
+  --profile <profile> --out <terminology dir> --json`. Always use the same `--out` (ideally a repo
+  the team owns), so a person's decisions carry over. On exit `10`, add one block to the message:
+  each catalog with proposals (`results[].proposals`, how many came from other apps), the terms
+  two apps approved differently (`counts.conflicts`, listed in `GLOSSARY.md`), and the `GLOSSARY.md`
+  path. Don't repeat a block the person already saw unless it changed. Load `inventory.sql` or
+  `inventory.csv` into the team's database or Notion only if the person set that up. Never fill in
+  decisions. Run `council glossary apply` (without `--write`) only when the person asks
+  ([docs/glossary.md](../glossary.md#sweep-a-garden)).
 
 - **Monthly tidy.** For locales that shipped a while ago, run `council tidy … --bt-file <prior
   backtranslations.json> --json` and report rows where `reopen` is true

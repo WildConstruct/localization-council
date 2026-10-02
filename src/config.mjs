@@ -6,11 +6,36 @@
  */
 
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, relative, isAbsolute, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { UsageError } from "./errors.mjs";
 
 const CONFIG_DIR = new URL("../config/", import.meta.url);
 const PKG_URL = new URL("../package.json", import.meta.url);
+const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+/** Folders of this checkout that git ignores, where a team's own data may sit. */
+const PRIVATE_DIRS = new Set(["scores", "local"]);
+
+/**
+ * A warning when `path` would put a team's own data (a glossary, proposals, the term inventory) in
+ * this checkout of localization-council where it could be committed. scores/ and local/ are
+ * ignored; anywhere else in the checkout is not. Returns null when the path is fine.
+ * @param {string} path
+ * @param {string} what - e.g. "--out"
+ */
+export function councilCheckoutWarning(path, what) {
+  if (!path) return null;
+  const rel = relative(PACKAGE_ROOT, resolve(path));
+  if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) return null; // outside the checkout
+  if (rel && PRIVATE_DIRS.has(rel.split(sep)[0])) return null;
+  return {
+    code: "inside_council_checkout",
+    message:
+      `${what} ${resolve(path)} is inside the localization-council checkout. Keep your glossary and council output ` +
+      "in your own repo, or under scores/ or local/ (both ignored by git); never commit them to localization-council.",
+  };
+}
 
 function readJson(url) {
   return JSON.parse(readFileSync(url, "utf8"));

@@ -24,7 +24,7 @@ open public issues for them.
   profile, `test/fixtures/fake-*.mjs`, the local fake OpenRouter server
   (`test/helpers/fake-openrouter.mjs`), or recorded fixtures.
 - **Every adapter passes the contract test** (`test/contract.test.mjs`). A new provider implements
-  `translate`, `backtranslate`, `judge`, and `compare` over batches (`src/providers/contract.mjs`),
+  `translate`, `backtranslate`, `judge`, `compare`, and `terms` over batches (`src/providers/contract.mjs`),
   or throws `UnsupportedStageError` for stages it can't do. Add it to the contract test's list.
 - **Fail closed.** Missing or malformed provider output is an error (`MissingVerdictError`),
   never a pass.
@@ -49,7 +49,12 @@ the OpenRouter fixtures. Review that diff before committing.
 
 - Keep them focused. Describe the behavior change and how you tested it.
 - `npm test` must pass.
-- Glossary or fixture changes: explain the terminology choice in the entry's `why`.
+- Glossary or fixture changes: explain the terminology choice in the entry's `why`. Example glossaries
+  under `fixtures/` are synthetic and describe a made-up product.
+- Never include your product's glossary, catalogs, or council output (proposals, the term inventory,
+  run artifacts). They belong in your own repo or store. `.gitignore` keeps them out by default,
+  `local/` is ignored if you want them inside your clone, and `test/repo-hygiene.test.mjs` fails a
+  pull request that adds them anyway.
 
 ## Good first issues
 

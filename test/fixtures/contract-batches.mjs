@@ -37,4 +37,12 @@ export const CONTRACT_BATCHES = {
     glossary,
     items: [{ key: "ui.status.rendering", source: "Rendering…", options: { X: "Wird gerendert…", Y: "Rendern…" } }],
   },
+  terms: {
+    locale: "de",
+    glossary: null,
+    items: [
+      { key: "ui.layer.rename", source: "Rename layers", candidate: "Ebenen umbenennen" },
+      { key: "ui.timeline.play", source: "Play", candidate: "Abspielen" },
+    ],
+  },
 };

@@ -17,6 +17,7 @@ import { cliCodexTranslate, cliCodexBacktranslate, cliCodexJudge, CODEX_BASE_ARG
 import { cliClaudeTranslate, cliClaudeJudge } from "../src/providers/cli-claude.mjs";
 import { cliGrokTranslate } from "../src/providers/cli-grok.mjs";
 import { MissingVerdictError, UnsupportedStageError } from "../src/providers/contract.mjs";
+import { parseTermsJson } from "../src/providers/terms-schema.mjs";
 import { applyModelSelection, loadModelsConfig, presetNames } from "../src/config.mjs";
 import { runDoctor } from "../src/doctor.mjs";
 
@@ -374,6 +375,23 @@ describe("judge / compare parsing fails closed", () => {
       parseCompareJson(JSON.stringify({ pick: "none", rationale: "all wrong" }), { provider: "t", key: "k", labels: ["X"] }).pick,
       "none",
     );
+  });
+});
+
+describe("terms parsing fails closed", () => {
+  it("accepts an empty list and trims fields", () => {
+    assert.deepEqual(parseTermsJson('{"terms":[]}', { provider: "t", key: "k" }).terms, []);
+    const r = parseTermsJson(
+      JSON.stringify({ terms: [{ source: " layer ", target: "Ebenen ", base: "Ebene", productMeaning: "track" }] }),
+      { provider: "t", key: "k" },
+    );
+    assert.deepEqual(r.terms[0], { source: "layer", target: "Ebenen", base: "Ebene", productMeaning: "track" });
+  });
+
+  it("a missing list, a missing field or empty output is a missing verdict", () => {
+    for (const out of ["", "{}", '{"terms":[{"source":"layer"}]}', '{"terms":"layer"}']) {
+      assert.throws(() => parseTermsJson(out, { provider: "t", key: "k" }), MissingVerdictError, out);
+    }
   });
 });
 

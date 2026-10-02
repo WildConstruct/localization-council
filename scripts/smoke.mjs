@@ -88,7 +88,8 @@ if (record && profile === "openrouter") {
   mkdirSync(recDir, { recursive: true });
   const stages = loadModelsConfig().openrouter.stages;
   for (const [stage, batch] of Object.entries(CONTRACT_BATCHES)) {
-    const slug = stages[stage === "compare" ? "judge" : stage];
+    // compare and terms run on the judge model (blind-audit votes; the harvest extractor defaults to the judge).
+    const slug = stages[stage === "compare" || stage === "terms" ? "judge" : stage];
     const fetchImpl = async (url, init) => {
       const res = await fetch(url, init);
       const text = await res.text();

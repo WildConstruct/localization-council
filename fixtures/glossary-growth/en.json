@@ -1,0 +1,18 @@
+{
+  "ui.layer.add": "Add layer",
+  "ui.layer.delete": "Delete layer",
+  "ui.layer.rename": "Rename layers",
+  "ui.keyframe.add": "Add keyframe",
+  "ui.keyframe.delete": "Delete keyframes",
+  "ui.keyframe.ease": "Ease keyframe",
+  "ui.render.queue": "Add to render queue",
+  "ui.render.clear": "Clear render queue",
+  "ui.comp.new": "New composition",
+  "ui.comp.settings": "Composition settings",
+  "ui.viewport.onion": "Onion skin",
+  "ui.viewport.fit": "Fit to viewport",
+  "ui.viewport.zoom": "Zoom viewport",
+  "ui.timeline.play": "Play",
+  "ui.timeline.pause": "Pause",
+  "ui.mask.path": "Mask path"
+}

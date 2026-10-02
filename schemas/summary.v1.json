@@ -23,6 +23,7 @@
         "diff",
         "tidy",
         "garden",
+        "glossary",
         "doctor",
         "presets",
         "version",
@@ -57,6 +58,7 @@
     { "$ref": "#/$defs/diff" },
     { "$ref": "#/$defs/tidy" },
     { "$ref": "#/$defs/garden" },
+    { "$ref": "#/$defs/glossary" },
     { "$ref": "#/$defs/doctor" },
     { "$ref": "#/$defs/presets" },
     { "$ref": "#/$defs/version" },
@@ -373,10 +375,55 @@
           "enum": [
             "clean",
             "delta",
+            "proposals",
             "errors",
             "error"
           ]
-        }
+        },
+        "mode": { "enum": ["dry-diff", "glossary"], "description": "Present for --mode glossary" },
+        "withProposals": { "type": ["integer", "null"], "minimum": 0 },
+        "artifacts": { "type": ["object", "null"], "additionalProperties": { "type": "string" } },
+        "counts": { "type": ["object", "null"] }
+      }
+    },
+    "glossary": {
+      "type": "object",
+      "description": "council glossary harvest | apply. `proposals` lists proposals not yet in the glossary: decision null means a person still has to decide; a decision means it waits for `council glossary apply`. Exit 10 while there are any.",
+      "required": ["status", "action", "locale", "outDir", "artifacts", "counts", "proposals", "costUsd"],
+      "properties": {
+        "command": { "const": "glossary" },
+        "status": { "enum": ["clean", "proposals", "applied", "error"] },
+        "action": { "enum": ["harvest", "apply", null] },
+        "locale": { "type": ["string", "null"] },
+        "profile": { "type": ["string", "null"] },
+        "extractor": { "type": ["string", "null"] },
+        "outDir": { "type": ["string", "null"] },
+        "artifacts": { "type": ["object", "null"], "additionalProperties": { "type": ["string", "null"] } },
+        "counts": { "type": ["object", "null"] },
+        "proposals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "practitionerTerm", "keys", "consistent", "decision", "kind", "from"],
+            "properties": {
+              "source": { "type": "string" },
+              "practitionerTerm": { "type": "string" },
+              "keys": { "type": "integer", "minimum": 0 },
+              "consistent": { "type": "boolean" },
+              "decision": { "type": ["string", "null"] },
+              "kind": { "enum": ["harvest", "carry_over"] },
+              "from": { "type": ["string", "null"], "description": "The other app whose approved entry pre-filled the proposal" }
+            }
+          }
+        },
+        "written": { "enum": ["in_place", "next_file", "nothing"] },
+        "skipped": {
+          "type": "array",
+          "items": { "type": "object", "required": ["source", "reason"], "properties": { "source": { "type": "string" }, "reason": { "type": "string" } } }
+        },
+        "newGlossary": { "type": "boolean" },
+        "costUsd": { "type": ["number", "null"] }
       }
     },
     "doctor": {
