@@ -141,6 +141,14 @@ Reason codes:
 `warnings` in the summary are worth passing on. The main ones are `same_family_*`, which means two
 stages use the same model family and the blind check is weaker, and `cli_below_min_version`.
 
+### 4b. Check host text handling
+
+Before any PR or hand-off, check how each host app consumes the strings: encoding per version and
+OS, byte limits and reserved characters, fallback, fonts and layout, language detection, and render
+or test proof. A missing check is a defect even if every row ships. Follow
+[docs/host-text-handling.md](docs/host-text-handling.md) and add its **Host text handling** table
+and warnings to the hand-off.
+
 ### 5. What to hand a person
 
 Keep it short, and don't paste whole catalogs:
@@ -158,6 +166,8 @@ Report: scores/de/report.md · Sheet: scores/de/escalate.json
 Accepted strings for your PR: scores/de/accepted.json
 Profile: fleet · cost: $0.04 (see manifest.json)
 ```
+
+Add the Host text handling table and any missing-check warnings (see 4b).
 
 Tell the person that nothing was merged. They decide what goes into the catalog.
 

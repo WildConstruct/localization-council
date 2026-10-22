@@ -155,6 +155,7 @@ Every subcommand accepts `--json` and prints one object matching the [summary sc
 - [Post-escalate resolution](docs/escalate-resolution.md), [retrospective tidy](docs/retrospective-tidy.md), and [growing the glossary](docs/glossary.md)
 - [Fleet CLIs](docs/fleet-cli.md), [OpenRouter](docs/openrouter.md), and [Jev decision gates](docs/jev-gates.md)
 - [Multi-repo gardens](docs/garden.md), [scheduled routines](docs/routines/scheduled-agent.md), and [CI delta checks](docs/ci-delta.md)
+- [Host text handling](docs/host-text-handling.md): required check of how each app consumes the strings
 - [Model bakeoff](docs/model-bakeoff.md), [results](docs/results.md), and [roadmap](docs/backlog.md)
 
 ## Contributing and security
